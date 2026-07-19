@@ -1,0 +1,18 @@
+{
+  "description": "408 AI 导师微信小程序",
+  "setting": {
+    "urlCheck": false,
+    "es6": true,
+    "enhance": true,
+    "postcss": true,
+    "minified": true,
+    "newFeature": true,
+    "bigPackageSizeSupport": true
+  },
+  "compileType": "miniprogram",
+  "libVersion": "latest",
+  "appid": "",
+  "projectname": "408-exercises",
+  "miniprogramRoot": "dist/dev/mp-weixin/",
+  "condition": {}
+}

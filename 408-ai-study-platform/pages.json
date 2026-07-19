@@ -1,0 +1,74 @@
+{
+  "easycom": {
+    "autoscan": true,
+    "custom": {
+      "^u-(.*)": "uview-plus/components/u-$1/u-$1.vue"
+    }
+  },
+  "pages": [
+    {
+      "path": "pages/index/index",
+      "style": {
+        "navigationBarTitleText": "408 AI 导师"
+      }
+    },
+    {
+      "path": "pages/questions/index",
+      "style": {
+        "navigationBarTitleText": "刷题训练"
+      }
+    },
+    {
+      "path": "pages/resources/index",
+      "style": {
+        "navigationBarTitleText": "PDF 资料库"
+      }
+    },
+    {
+      "path": "pages/ai/index",
+      "style": {
+        "navigationBarTitleText": "AI 讲题"
+      }
+    },
+    {
+      "path": "pages/profile/index",
+      "style": {
+        "navigationBarTitleText": "我的学习"
+      }
+    }
+  ],
+  "globalStyle": {
+    "navigationBarTextStyle": "black",
+    "navigationBarTitleText": "408 AI 导师",
+    "navigationBarBackgroundColor": "#ffffff",
+    "backgroundColor": "#f5f7fb"
+  },
+  "tabBar": {
+    "color": "#586174",
+    "selectedColor": "#2563eb",
+    "backgroundColor": "#ffffff",
+    "borderStyle": "black",
+    "list": [
+      {
+        "pagePath": "pages/index/index",
+        "text": "首页"
+      },
+      {
+        "pagePath": "pages/questions/index",
+        "text": "刷题"
+      },
+      {
+        "pagePath": "pages/resources/index",
+        "text": "资料"
+      },
+      {
+        "pagePath": "pages/ai/index",
+        "text": "AI"
+      },
+      {
+        "pagePath": "pages/profile/index",
+        "text": "我的"
+      }
+    ]
+  }
+}

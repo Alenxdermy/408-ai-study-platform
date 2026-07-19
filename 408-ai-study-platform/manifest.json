@@ -1,0 +1,32 @@
+{
+  "name": "408 AI 导师",
+  "appid": "__UNI__408AI",
+  "description": "面向 408 计算机考研用户的 AI 学习、刷题与资料阅读平台",
+  "versionName": "0.1.0",
+  "versionCode": "1",
+  "transformPx": false,
+  "uniStatistics": {
+    "enable": false
+  },
+  "mp-weixin": {
+    "appid": "",
+    "setting": {
+      "urlCheck": false,
+      "es6": true,
+      "minified": true,
+      "postcss": true
+    },
+    "usingComponents": true,
+    "permission": {
+      "scope.userInfo": {
+        "desc": "用于展示学习资料、学习统计和个性化学习服务"
+      }
+    },
+    "requiredPrivateInfos": []
+  },
+  "h5": {
+    "router": {
+      "mode": "hash"
+    }
+  }
+}
