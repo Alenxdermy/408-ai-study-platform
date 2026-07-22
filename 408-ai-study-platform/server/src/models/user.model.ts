@@ -33,13 +33,11 @@ UserModel.init(
     },
     openId: {
       type: DataTypes.STRING,
-      allowNull: true,
-      unique: true
+      allowNull: true
     },
     unionId: {
       type: DataTypes.STRING,
-      allowNull: true,
-      unique: true
+      allowNull: true
     },
     nickname: {
       type: DataTypes.STRING,
@@ -53,8 +51,7 @@ UserModel.init(
     },
     phone: {
       type: DataTypes.STRING,
-      allowNull: true,
-      unique: true
+      allowNull: true
     },
     passwordHash: {
       type: DataTypes.STRING,
@@ -96,9 +93,9 @@ UserModel.init(
     modelName: 'User',
     tableName: 'users',
     indexes: [
-      { fields: ['open_id'] },
-      { fields: ['union_id'] },
-      { fields: ['phone'] }
+      { name: 'users_open_id_unique', unique: true, fields: ['open_id'] },
+      { name: 'users_union_id_unique', unique: true, fields: ['union_id'] },
+      { name: 'users_phone_unique', unique: true, fields: ['phone'] }
     ]
   }
 );

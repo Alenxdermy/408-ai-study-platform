@@ -117,6 +117,7 @@ DB_PORT=3306
 DB_NAME=ai_408_study
 DB_USER=root
 DB_PASSWORD=你的数据库密码
+DB_SYNC_MODE=none
 
 JWT_SECRET=dev-secret-key-for-408-study-platform
 JWT_EXPIRES_IN=7d
@@ -142,6 +143,7 @@ LOG_LEVEL=info
 - 不要把真实 API Key 写进前端代码。
 - 不要把真实 `.env` 提交到代码仓库。
 - `STATIC_DOCS_DIR` 必须指向真实存在的 `E:\python chapter\408\docs`。
+- `DB_SYNC_MODE` 默认使用 `none`，避免 Sequelize 每次启动自动修改表结构。
 
 ## 5. 初始化数据库
 
@@ -164,6 +166,16 @@ DB_PASSWORD=你的数据库密码
 ```
 
 如果数据库没有启动，后端也会启动失败，PDF 预览接口也无法访问。
+
+数据库同步模式说明：
+
+```text
+DB_SYNC_MODE=none    # 推荐，启动时只连接数据库，不自动改表
+DB_SYNC_MODE=create  # 仅适合全新空数据库，用于创建缺失表
+DB_SYNC_MODE=alter   # 不推荐长期使用，可能重复创建索引
+```
+
+如果你遇到 `Too many keys specified; max 64 keys allowed`，通常是之前长期使用 `alter` 模式导致同一字段被重复创建唯一索引。当前项目已默认关闭自动改表。
 
 ## 6. 启动后端服务
 
@@ -454,6 +466,16 @@ E:\python chapter\408\408-ai-study-platform\dist\dev\mp-weixin
 - MySQL 是否启动。
 - `JWT_SECRET` 长度是否至少 16 位。
 - `STATIC_DOCS_DIR` 是否指向真实 docs 目录。
+- `DB_SYNC_MODE` 是否为 `none`。
+
+如果报错：
+
+```text
+Too many keys specified; max 64 keys allowed
+ALTER TABLE `users` CHANGE `phone` `phone` VARCHAR(255) UNIQUE;
+```
+
+原因是 MySQL 的 `users` 表里已经存在过多重复索引。当前代码已默认关闭自动改表，后端不应再继续创建重复索引。后续如需彻底清理数据库，可以在 MySQL 中删除 `users` 表上的重复 `phone/open_id/union_id` 索引，只保留必要唯一索引。
 
 ### 16.6 PowerShell 中文乱码
 

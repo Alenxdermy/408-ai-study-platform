@@ -16,6 +16,7 @@ const envSchema = z.object({
   DB_NAME: z.string().default('ai_408_study'),
   DB_USER: z.string().default('root'),
   DB_PASSWORD: z.string(),
+  DB_SYNC_MODE: z.enum(['none', 'create', 'alter']).default('none'),
   JWT_SECRET: z.string().min(16),
   JWT_EXPIRES_IN: z.string().default('7d'),
   OPENAI_API_KEY: z.string().min(1).optional(),

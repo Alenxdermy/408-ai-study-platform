@@ -18,8 +18,21 @@ export const connectDatabase = async () => {
   try {
     await sequelize.authenticate();
     logger.info('mysql connected');
-    await sequelize.sync({ alter: true });
-    logger.info('mysql models synchronized');
+
+    if (env.DB_SYNC_MODE === 'alter') {
+      logger.warn('mysql model sync is running in alter mode; do not use this mode for long-term development');
+      await sequelize.sync({ alter: true });
+      logger.info('mysql models synchronized with alter mode');
+      return;
+    }
+
+    if (env.DB_SYNC_MODE === 'create') {
+      await sequelize.sync();
+      logger.info('mysql missing tables synchronized');
+      return;
+    }
+
+    logger.info('mysql model synchronization skipped');
   } catch (error) {
     logger.error(error, 'mysql connection failed');
     throw error;
