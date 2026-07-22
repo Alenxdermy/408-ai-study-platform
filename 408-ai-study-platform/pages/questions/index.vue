@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { computed, ref } from 'vue';
 import { http } from '../../services/http';
 import { useAuthStore } from '../../stores/auth';
@@ -169,110 +169,131 @@ void loadDaily();
   align-items: flex-start;
   justify-content: space-between;
   gap: 24rpx;
+  padding: 26rpx;
+  border-radius: 8px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(239, 246, 255, 0.96));
+  border: 1px solid rgba(191, 219, 254, 0.72);
+  box-shadow: 0 14rpx 34rpx rgba(37, 99, 235, 0.08);
 }
 
 .progress {
-  min-width: 88rpx;
-  color: #2563eb;
+  min-width: 96rpx;
+  padding: 10rpx 14rpx;
+  border-radius: 8px;
+  color: #ffffff;
+  background: linear-gradient(135deg, #2563eb, #14b8a6);
+  background-size: 160% 160%;
   font-size: 28rpx;
-  font-weight: 700;
+  font-weight: 800;
   line-height: 1.4;
-  text-align: right;
+  text-align: center;
+  animation: heroGradient 7s ease-in-out infinite;
 }
 
 .question-meta {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 18rpx;
+  margin-bottom: 20rpx;
 }
 
 .tag {
-  padding: 6rpx 14rpx;
-  border-radius: 6px;
-  background: #e8f0ff;
+  padding: 8rpx 16rpx;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #dbeafe, #ccfbf1);
   color: #1d4ed8;
   font-size: 24rpx;
+  font-weight: 700;
 }
 
 .source {
-  color: #667085;
+  color: #64748b;
   font-size: 24rpx;
 }
 
 .stem {
   display: block;
-  margin-bottom: 18rpx;
-  color: #182033;
-  font-size: 30rpx;
-  font-weight: 600;
-  line-height: 1.7;
+  margin-bottom: 22rpx;
+  color: #111827;
+  font-size: 31rpx;
+  font-weight: 700;
+  line-height: 1.75;
 }
 
 .option {
   display: flex;
   gap: 18rpx;
   align-items: flex-start;
-  min-height: 76rpx;
-  padding: 18rpx;
-  border: 1px solid #edf0f5;
+  min-height: 82rpx;
+  padding: 20rpx;
+  border: 1px solid #e5e7eb;
   border-radius: 8px;
   margin-bottom: 14rpx;
-  background: #ffffff;
+  background: linear-gradient(180deg, #ffffff, #f8fafc);
   box-sizing: border-box;
+  box-shadow: 0 8rpx 20rpx rgba(15, 23, 42, 0.04);
+  transition: transform 160ms ease, border-color 160ms ease, background 160ms ease;
+}
+
+.option:active {
+  transform: scale(0.99);
 }
 
 .option.selected {
   border-color: #2563eb;
-  background: #eff6ff;
+  background: linear-gradient(135deg, #eff6ff, #ecfeff);
+  box-shadow: 0 12rpx 26rpx rgba(37, 99, 235, 0.10);
 }
 
 .option.disabled {
-  opacity: 0.82;
+  opacity: 0.86;
 }
 
 .option-key {
   display: flex;
   align-items: center;
   justify-content: center;
-  flex: 0 0 42rpx;
-  height: 42rpx;
+  flex: 0 0 44rpx;
+  height: 44rpx;
   border-radius: 50%;
-  background: #edf0f5;
-  color: #344054;
-  font-weight: 700;
+  background: #e2e8f0;
+  color: #334155;
+  font-weight: 800;
 }
 
 .option.selected .option-key {
-  background: #2563eb;
+  background: linear-gradient(135deg, #2563eb, #14b8a6);
   color: #ffffff;
 }
 
 .option-text {
   flex: 1;
-  color: #344054;
-  line-height: 1.6;
+  color: #334155;
+  font-size: 27rpx;
+  line-height: 1.65;
 }
 
 .actions {
   display: grid;
-  grid-template-columns: 1fr 160rpx;
+  grid-template-columns: 1fr 168rpx;
   gap: 16rpx;
-  margin-top: 20rpx;
+  margin-top: 22rpx;
 }
 
 .analysis {
   display: grid;
-  gap: 12rpx;
-  margin-top: 24rpx;
-  padding-top: 24rpx;
-  border-top: 1px solid #edf0f5;
+  gap: 14rpx;
+  margin-top: 26rpx;
+  padding: 24rpx;
+  border: 1px solid rgba(187, 247, 208, 0.86);
+  border-radius: 8px;
+  background: linear-gradient(135deg, rgba(240, 253, 244, 0.95), rgba(255, 251, 235, 0.82));
 }
 
 .result {
   color: #15803d;
   font-size: 32rpx;
-  font-weight: 700;
+  font-weight: 800;
 }
 
 .result.wrong {
@@ -280,23 +301,34 @@ void loadDaily();
 }
 
 .analysis-title {
-  color: #182033;
-  font-weight: 700;
+  color: #111827;
+  font-weight: 800;
 }
 
 .analysis-text {
-  color: #344054;
-  line-height: 1.7;
+  color: #334155;
+  line-height: 1.75;
 }
 
 .empty {
   display: grid;
   gap: 20rpx;
+  text-align: left;
 }
 
 .empty-title {
-  color: #182033;
+  color: #111827;
   font-size: 32rpx;
-  font-weight: 700;
+  font-weight: 800;
+}
+
+@keyframes heroGradient {
+  0%, 100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
 }
 </style>
+

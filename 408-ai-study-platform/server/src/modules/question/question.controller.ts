@@ -1,4 +1,4 @@
-import type { Response } from 'express';
+﻿import type { Response } from 'express';
 import { FavoriteModel } from '../../models/favorite.model.js';
 import { QuestionModel } from '../../models/question.model.js';
 import { StudyRecordModel } from '../../models/study-record.model.js';
@@ -40,18 +40,19 @@ export class QuestionController {
   }
 
   static async answer(req: AuthRequest, res: Response) {
-    const question = await QuestionModel.findByPk(req.params.id);
+    const questionId = String(req.params.id);
+    const question = await QuestionModel.findByPk(questionId);
     if (!question) throw new AppError(404, '题目不存在', 'QUESTION_NOT_FOUND');
 
     const userAnswer = req.body.answer;
     const isCorrect = isAnswerCorrect(question.answer, userAnswer);
-    await StudyRecordModel.create({ userId: req.userId, questionId: req.params.id, action: 'answer', isCorrect });
+    await StudyRecordModel.create({ userId: req.userId, questionId, action: 'answer', isCorrect });
     if (!isCorrect) {
       const [wrongBook, created] = await WrongBookModel.findOrCreate({
-        where: { userId: req.userId, questionId: req.params.id },
+        where: { userId: req.userId, questionId },
         defaults: {
           userId: req.userId,
-          questionId: req.params.id,
+          questionId,
           wrongAnswer: userAnswer,
           lastWrongAt: new Date(),
           wrongCount: 1
@@ -75,14 +76,15 @@ export class QuestionController {
   }
 
   static async toggleFavorite(req: AuthRequest, res: Response) {
-    const existed = await FavoriteModel.findOne({ where: { userId: req.userId, questionId: req.params.id } });
+    const questionId = String(req.params.id);
+    const existed = await FavoriteModel.findOne({ where: { userId: req.userId, questionId } });
     if (existed) {
       await existed.destroy();
       ok(res, { favorited: false }, '已取消收藏');
       return;
     }
 
-    await FavoriteModel.create({ userId: req.userId, questionId: req.params.id });
+    await FavoriteModel.create({ userId: req.userId, questionId });
     ok(res, { favorited: true }, '已收藏');
   }
 
@@ -95,3 +97,5 @@ export class QuestionController {
     ok(res, items);
   }
 }
+
+

@@ -1,4 +1,4 @@
-import { createReadStream } from 'node:fs';
+﻿import { createReadStream } from 'node:fs';
 import { stat } from 'node:fs/promises';
 import path from 'node:path';
 import { Op } from 'sequelize';
@@ -57,7 +57,7 @@ export class ResourceController {
   }
 
   private static async streamPdf(req: AuthRequest, res: Response, disposition: 'inline' | 'attachment') {
-    const document = await ResourceDocumentModel.findByPk(req.params.id);
+    const document = await ResourceDocumentModel.findByPk(String(req.params.id));
     if (!document || document.status !== 'published') {
       throw new AppError(404, '资料不存在', 'RESOURCE_NOT_FOUND');
     }
@@ -79,3 +79,4 @@ export class ResourceController {
     createReadStream(absolutePath).pipe(res);
   }
 }
+

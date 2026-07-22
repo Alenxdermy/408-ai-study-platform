@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { computed } from 'vue';
 import { useAuthStore } from '../../stores/auth';
 
@@ -32,6 +32,55 @@ const login = async () => {
 <style scoped>
 .profile-card {
   display: grid;
-  gap: 16rpx;
+  gap: 18rpx;
+  padding: 34rpx 28rpx;
+  border-color: rgba(191, 219, 254, 0.76);
+  background:
+    linear-gradient(135deg, rgba(37, 99, 235, 0.95), rgba(20, 184, 166, 0.9), rgba(245, 158, 11, 0.78)),
+    #2563eb;
+  background-size: 190% 190%;
+  box-shadow: 0 18rpx 42rpx rgba(37, 99, 235, 0.16);
+  animation: heroGradient 10s ease-in-out infinite;
+}
+
+.profile-card .title,
+.profile-card .muted {
+  color: #ffffff;
+}
+
+.profile-card .muted {
+  color: rgba(255, 255, 255, 0.86);
+}
+
+.panel:not(.profile-card) {
+  padding: 10rpx 0;
+}
+
+.panel :deep(.u-cell) {
+  background: transparent;
+}
+
+.panel :deep(.u-cell__body) {
+  padding: 26rpx 28rpx;
+}
+
+.panel :deep(.u-cell__title-text) {
+  color: #111827;
+  font-weight: 700;
+}
+
+.panel :deep(.u-cell__value) {
+  color: #2563eb;
+  font-weight: 700;
+}
+
+@keyframes heroGradient {
+  0%, 100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
 }
 </style>
+

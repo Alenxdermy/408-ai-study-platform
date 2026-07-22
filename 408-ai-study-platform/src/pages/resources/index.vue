@@ -1,184 +1,167 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { computed, ref } from 'vue';
-import { API_BASE_URL, http } from '../../services/http';
-import { useAuthStore } from '../../stores/auth';
+import { API_BASE_URL } from '../../services/http';
 
-interface ResourceDocument {
+type FixedPdfKind = 'paper' | 'answer';
+
+interface FixedPdfResource {
   id: string;
+  year: string;
+  kind: FixedPdfKind;
   title: string;
   description: string;
-  category: string;
-  originalName: string;
+  group: 'papers-rebuild' | 'answers';
+  fileName: string;
   size: number;
-  viewCount: number;
-  downloadCount: number;
-  parseStatus: 'pending' | 'parsed' | 'failed';
-  parseError?: string;
-  textPreview?: string;
-  wordCount?: number;
-  summary?: string;
-  summaryStatus: 'pending' | 'generated' | 'skipped' | 'failed';
-  summaryError?: string;
 }
 
-interface ChooseFileResult {
-  path: string;
-  name: string;
+interface YearResourceGroup {
+  year: string;
+  items: FixedPdfResource[];
 }
 
-const auth = useAuthStore();
-const resources = ref<ResourceDocument[]>([]);
-const loading = ref(false);
-const uploading = ref(false);
-const summarizingId = ref('');
 const keyword = ref('');
+const category = ref('all');
 
-const uploadHint = computed(() => uploading.value ? '上传中...' : '上传 PDF');
+const categoryOptions = [
+  { name: '全部', value: 'all' },
+  { name: '真题', value: 'paper' },
+  { name: '答案', value: 'answer' }
+];
+
+const paperSizes: Record<string, number> = {
+  '2009': 863836,
+  '2010': 891051,
+  '2011': 1044010,
+  '2012': 860387,
+  '2013': 1013658,
+  '2014': 925216,
+  '2015': 1093642,
+  '2016': 1024044,
+  '2017': 1153304,
+  '2018': 1838144,
+  '2019': 879667,
+  '2020': 1293589,
+  '2021': 866184,
+  '2022': 1183597,
+  '2023': 853848,
+  '2024': 844959,
+  '2025': 1053731
+};
+
+const answerSizes: Record<string, number> = {
+  '2009': 2174705,
+  '2010': 2212145,
+  '2011': 2502317,
+  '2012': 2339464,
+  '2013': 2070543,
+  '2014': 3007989,
+  '2015': 1617182,
+  '2016': 2374710,
+  '2017': 1897944,
+  '2018': 1732559,
+  '2019': 2793294,
+  '2020': 7242234,
+  '2021': 8133056,
+  '2022': 2065590,
+  '2023': 533731,
+  '2024': 1232336,
+  '2025': 1248632
+};
+
+const years = Object.keys(paperSizes).sort((a, b) => b.localeCompare(a));
+
+const resources: FixedPdfResource[] = years.flatMap(year => [
+  {
+    id: `${year}-paper`,
+    year,
+    kind: 'paper',
+    title: `${year} 年真题`,
+    description: `408 ${year} 年统考真题 PDF`,
+    group: 'papers-rebuild',
+    fileName: `${year}.pdf`,
+    size: paperSizes[year]
+  },
+  {
+    id: `${year}-answer`,
+    year,
+    kind: 'answer',
+    title: `${year} 年答案`,
+    description: `408 ${year} 年真题答案与解析 PDF`,
+    group: 'answers',
+    fileName: `${year}-answer.pdf`,
+    size: answerSizes[year]
+  }
+]);
+
+const filteredYearGroups = computed<YearResourceGroup[]>(() => {
+  const normalizedKeyword = keyword.value.trim().toLowerCase();
+
+  return years
+    .map(year => {
+      const items = resources.filter(item => {
+        const matchKeyword = !normalizedKeyword
+          || item.title.toLowerCase().includes(normalizedKeyword)
+          || item.description.toLowerCase().includes(normalizedKeyword)
+          || item.fileName.toLowerCase().includes(normalizedKeyword)
+          || item.year.includes(normalizedKeyword);
+        const matchCategory = category.value === 'all' || item.kind === category.value;
+        return item.year === year && matchKeyword && matchCategory;
+      });
+
+      return { year, items };
+    })
+    .filter(group => group.items.length > 0);
+});
+
+const paperCount = computed(() => resources.filter(item => item.kind === 'paper').length);
+const answerCount = computed(() => resources.filter(item => item.kind === 'answer').length);
+const visibleCount = computed(() => filteredYearGroups.value.reduce((total, group) => total + group.items.length, 0));
 
 const formatSize = (size: number) => {
   if (size < 1024 * 1024) return `${Math.ceil(size / 1024)}KB`;
   return `${(size / 1024 / 1024).toFixed(1)}MB`;
 };
 
-const parseStatusText = (item: ResourceDocument) => {
-  if (item.parseStatus === 'parsed') return `已解析${item.wordCount ? ` · ${item.wordCount} 字` : ''}`;
-  if (item.parseStatus === 'failed') return '解析失败';
-  return '等待解析';
+const getTypeLabel = (kind: FixedPdfKind) => kind === 'paper' ? '真题' : '答案';
+
+const getTypeClass = (kind: FixedPdfKind) => kind === 'paper' ? 'paper' : 'answer';
+
+const buildPdfUrl = (item: FixedPdfResource, action: 'preview' | 'download') => {
+  const group = encodeURIComponent(item.group);
+  const fileName = encodeURIComponent(item.fileName);
+  return `${API_BASE_URL}/resources/static-pdfs/${group}/${fileName}/${action}`;
 };
 
-const summaryStatusText = (item: ResourceDocument) => {
-  if (item.summaryStatus === 'generated') return 'AI 摘要';
-  if (item.summaryStatus === 'skipped') return '未配置 AI Key，摘要待生成';
-  if (item.summaryStatus === 'failed') return '摘要生成失败';
-  return '摘要生成中';
+const getNetworkErrorMessage = (error: UniApp.GeneralCallbackResult) => {
+  const errMsg = String(error.errMsg || '');
+  if (errMsg.includes('url not in domain list')) return '请在微信开发者工具中勾选不校验合法域名';
+  if (errMsg.includes('fail')) return '请确认后端已启动，且小程序能访问接口地址';
+  return 'PDF 打开失败';
 };
 
-const loadResources = async () => {
-  loading.value = true;
-  try {
-    resources.value = await http.get<ResourceDocument[]>('/resources', {
-      params: { keyword: keyword.value || undefined }
-    });
-  } catch (error) {
-    uni.showToast({ title: '资料加载失败', icon: 'none' });
-    console.warn(error);
-  } finally {
-    loading.value = false;
+const openDownloadedPdf = (filePath: string) => {
+  if (!filePath) {
+    uni.hideLoading();
+    uni.showToast({ title: '文件路径无效', icon: 'none' });
+    return;
   }
-};
 
-const choosePdfFile = async (): Promise<ChooseFileResult | null> => {
-  // #ifdef MP-WEIXIN
-  const chooseMessageFile = (uni as unknown as {
-    chooseMessageFile: (options: {
-      count: number;
-      type: 'file';
-      extension: string[];
-      success: (result: { tempFiles: Array<{ path: string; name: string }> }) => void;
-      fail: (error: UniApp.GeneralCallbackResult) => void;
-    }) => void;
-  }).chooseMessageFile;
-
-  return new Promise((resolve, reject) => {
-    chooseMessageFile({
-      count: 1,
-      type: 'file',
-      extension: ['pdf'],
-      success: result => {
-        const file = result.tempFiles[0];
-        resolve(file ? { path: file.path, name: file.name } : null);
-      },
-      fail: reject
-    });
+  uni.openDocument({
+    filePath,
+    fileType: 'pdf',
+    showMenu: true,
+    success: () => uni.hideLoading(),
+    fail: error => {
+      uni.hideLoading();
+      uni.showToast({ title: '微信无法打开该 PDF', icon: 'none' });
+      console.warn('openDocument failed', error);
+    }
   });
-  // #endif
-
-  // #ifdef H5
-  const chooseFile = (uni as unknown as {
-    chooseFile: (options: {
-      count: number;
-      extension: string[];
-      success: (result: { tempFiles: Array<{ path: string; name: string }> }) => void;
-      fail: (error: UniApp.GeneralCallbackResult) => void;
-    }) => void;
-  }).chooseFile;
-
-  return new Promise((resolve, reject) => {
-    chooseFile({
-      count: 1,
-      extension: ['.pdf'],
-      success: result => {
-        const file = result.tempFiles[0];
-        resolve(file ? { path: file.path, name: file.name } : null);
-      },
-      fail: reject
-    });
-  });
-  // #endif
 };
 
-const parseUploadResponse = (rawData: string) => {
-  try {
-    return JSON.parse(rawData) as { code: number | string; message?: string };
-  } catch {
-    return { code: 'PARSE_ERROR', message: rawData };
-  }
-};
-
-const choosePdf = async () => {
-  await auth.ensureLogin();
-  uploading.value = true;
-
-  try {
-    const file = await choosePdfFile();
-    if (!file) return;
-
-    await new Promise<void>((resolve, reject) => {
-        uni.uploadFile({
-          url: `${API_BASE_URL}/resources/pdf`,
-          filePath: file.path,
-          name: 'file',
-          header: { Authorization: `Bearer ${auth.token}` },
-          formData: { title: file.name.replace(/\.pdf$/i, ''), category: 'general' },
-          success: response => {
-            const body = parseUploadResponse(String(response.data || ''));
-            if (response.statusCode >= 200 && response.statusCode < 300 && body.code === 0) {
-              resolve();
-              return;
-            }
-            reject(new Error(body.message || '上传失败'));
-          },
-          fail: reject
-        });
-      });
-
-    uni.showToast({ title: '上传成功', icon: 'success' });
-    await loadResources();
-  } catch (error) {
-    uni.showToast({ title: '上传失败', icon: 'none' });
-    console.warn(error);
-  } finally {
-    uploading.value = false;
-  }
-};
-
-const generateSummary = async (id: string) => {
-  await auth.ensureLogin();
-  summarizingId.value = id;
-  try {
-    await http.post(`/resources/${id}/summary`);
-    uni.showToast({ title: '摘要已生成', icon: 'success' });
-    await loadResources();
-  } catch (error) {
-    uni.showToast({ title: '摘要生成失败', icon: 'none' });
-    console.warn(error);
-  } finally {
-    summarizingId.value = '';
-  }
-};
-
-const openPdf = (id: string) => {
-  const url = `${API_BASE_URL}/resources/${id}/read`;
+const openPdf = (item: FixedPdfResource) => {
+  const url = buildPdfUrl(item, 'preview');
 
   // #ifdef H5
   window.open(url, '_blank');
@@ -188,118 +171,138 @@ const openPdf = (id: string) => {
   uni.showLoading({ title: '打开中...' });
   uni.downloadFile({
     url,
+    timeout: 60000,
+    header: { Accept: 'application/pdf' },
     success: result => {
-      uni.openDocument({
-        filePath: result.tempFilePath,
-        fileType: 'pdf',
-        showMenu: true,
-        complete: () => uni.hideLoading()
-      });
+      if (result.statusCode !== 200) {
+        uni.hideLoading();
+        uni.showToast({ title: `文件获取失败 ${result.statusCode}`, icon: 'none' });
+        return;
+      }
+
+      openDownloadedPdf(result.tempFilePath);
     },
     fail: error => {
       uni.hideLoading();
-      uni.showToast({ title: '打开失败', icon: 'none' });
-      console.warn(error);
+      uni.showToast({ title: getNetworkErrorMessage(error), icon: 'none' });
+      console.warn('downloadFile preview failed', { url, error });
     }
   });
   // #endif
 };
 
-const downloadPdf = (id: string) => {
-  const url = `${API_BASE_URL}/resources/${id}/download`;
+const downloadPdf = (item: FixedPdfResource) => {
+  const url = buildPdfUrl(item, 'download');
 
   // #ifdef H5
   window.open(url, '_blank');
   // #endif
 
   // #ifdef MP-WEIXIN
-  uni.showLoading({ title: '保存中...' });
+  uni.showLoading({ title: '下载中...' });
   uni.downloadFile({
     url,
+    timeout: 60000,
+    header: { Accept: 'application/pdf' },
     success: result => {
+      if (result.statusCode !== 200) {
+        uni.hideLoading();
+        uni.showToast({ title: `下载失败 ${result.statusCode}`, icon: 'none' });
+        return;
+      }
+
       uni.saveFile({
         tempFilePath: result.tempFilePath,
-        success: () => uni.showToast({ title: '已保存', icon: 'success' }),
-        fail: error => {
-          uni.showToast({ title: '保存失败', icon: 'none' });
-          console.warn(error);
+        success: saveResult => {
+          uni.hideLoading();
+          uni.showModal({
+            title: '下载完成',
+            content: 'PDF 已保存，可在微信文档菜单中打开、转发或收藏。',
+            confirmText: '打开',
+            cancelText: '知道了',
+            success: modal => {
+              if (modal.confirm) openDownloadedPdf(saveResult.savedFilePath);
+            }
+          });
         },
-        complete: () => uni.hideLoading()
+        fail: error => {
+          uni.hideLoading();
+          uni.showToast({ title: '保存失败', icon: 'none' });
+          console.warn('saveFile failed', error);
+        }
       });
     },
     fail: error => {
       uni.hideLoading();
-      uni.showToast({ title: '下载失败', icon: 'none' });
-      console.warn(error);
+      uni.showToast({ title: getNetworkErrorMessage(error), icon: 'none' });
+      console.warn('downloadFile save failed', { url, error });
     }
   });
   // #endif
 };
-
-void loadResources();
+const changeCategory = (index: number) => {
+  category.value = categoryOptions[index].value;
+};
 </script>
 
 <template>
   <view class="page">
-    <view class="header-section">
+    <view class="header-section section">
       <view class="header-content">
-        <text class="page-title">PDF 资料库</text>
-        <text class="page-subtitle">共 {{ resources.length }} 份资料</text>
+        <text class="page-title">408 真题资料库</text>
+        <text class="page-subtitle">固定收录 2009-2025 年真题与答案，支持预览和下载</text>
       </view>
-      <view class="header-action">
-        <u-button size="default" type="primary" :loading="uploading" :text="uploadHint" @click="choosePdf" />
-      </view>
-    </view>
-
-    <view class="search-section">
-      <u-search v-model="keyword" placeholder="搜索资料（如：2025、answer）" :show-action="false" @search="loadResources" />
-    </view>
-
-    <view v-if="loading" class="content-section">
-      <view class="loading-state">
-        <text class="loading-text">加载中...</text>
+      <view class="header-stats">
+        <text class="stat-number">{{ visibleCount }}</text>
+        <text class="stat-label">当前显示</text>
       </view>
     </view>
 
-    <view v-else-if="!resources.length" class="content-section">
-      <view class="empty-state">
-        <text class="empty-icon">📚</text>
-        <text class="empty-title">暂无 PDF 资料</text>
-        <text class="empty-desc">点击右上角「上传 PDF」添加您的学习资料</text>
+    <view class="metrics section">
+      <view class="metric-card">
+        <text class="metric-value">{{ paperCount }}</text>
+        <text class="metric-label">真题</text>
+      </view>
+      <view class="metric-card">
+        <text class="metric-value">{{ answerCount }}</text>
+        <text class="metric-label">答案</text>
+      </view>
+      <view class="metric-card">
+        <text class="metric-value">2009-2025</text>
+        <text class="metric-label">年份覆盖</text>
       </view>
     </view>
 
-    <view v-else class="content-section">
-      <view class="resource-list">
-        <view v-for="item in resources" :key="item.id" class="resource-card">
-          <view class="card-header">
-            <view class="card-icon">📄</view>
-            <view class="card-title-wrap">
-              <text class="card-title">{{ item.title }}</text>
-              <text class="card-meta">{{ formatSize(item.size) }} · 阅读 {{ item.viewCount }} · 下载 {{ item.downloadCount }}</text>
+    <view class="panel section filters">
+      <u-search v-model="keyword" placeholder="搜索年份、真题、答案" :show-action="false" />
+      <u-subsection :list="categoryOptions" key-name="name" mode="subsection" @change="changeCategory" />
+    </view>
+
+    <view v-if="!filteredYearGroups.length" class="panel empty-state">
+      <text class="empty-title">暂无符合条件的资料</text>
+      <text class="muted">请调整搜索词或资料类型。</text>
+    </view>
+
+    <view v-else class="year-list">
+      <view v-for="group in filteredYearGroups" :key="group.year" class="panel year-card">
+        <view class="year-header">
+          <text class="year-title">{{ group.year }} 年</text>
+          <text class="year-count">{{ group.items.length }} 份资料</text>
+        </view>
+
+        <view class="pdf-list">
+          <view v-for="item in group.items" :key="item.id" class="pdf-row">
+            <view class="pdf-main">
+              <text class="type-tag" :class="getTypeClass(item.kind)">{{ getTypeLabel(item.kind) }}</text>
+              <view class="pdf-text">
+                <text class="pdf-title">{{ item.title }}</text>
+                <text class="pdf-desc">{{ item.description }} · {{ formatSize(item.size) }}</text>
+              </view>
             </view>
-            <view class="card-status" :class="{ failed: item.parseStatus === 'failed' }">
-              {{ parseStatusText(item) }}
+            <view class="pdf-actions">
+              <u-button size="small" text="预览" @click="openPdf(item)" />
+              <u-button size="small" type="primary" text="下载" @click="downloadPdf(item)" />
             </view>
-          </view>
-
-          <view v-if="item.summary || item.textPreview || item.summaryError" class="card-summary">
-            <text class="summary-label">{{ summaryStatusText(item) }}</text>
-            <text v-if="item.summary" class="summary-content">{{ item.summary }}</text>
-            <text v-else-if="item.summaryError" class="summary-content error">{{ item.summaryError }}</text>
-            <text v-else class="summary-content">{{ item.textPreview }}</text>
-          </view>
-
-          <view class="card-actions">
-            <u-button size="mini" type="default" text="阅读" @click="openPdf(item.id)" />
-            <u-button size="mini" type="default" text="保存" @click="downloadPdf(item.id)" />
-            <u-button
-              size="mini"
-              type="primary"
-              text="生成摘要"
-              :loading="summarizingId === item.id"
-              @click="generateSummary(item.id)"
-            />
           </view>
         </view>
       </view>
@@ -308,179 +311,214 @@ void loadResources();
 </template>
 
 <style scoped>
-.page {
-  min-height: 100vh;
-  background-color: #f5f7fa;
-  padding-bottom: 120rpx;
-}
-
 .header-section {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 32rpx 30rpx;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  gap: 22rpx;
+  padding: 34rpx 30rpx;
+  border: 1px solid rgba(191, 219, 254, 0.72);
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, rgba(37, 99, 235, 0.96), rgba(20, 184, 166, 0.9) 58%, rgba(245, 158, 11, 0.84)),
+    #2563eb;
+  background-size: 190% 190%;
+  box-shadow: 0 18rpx 42rpx rgba(37, 99, 235, 0.16);
+  animation: heroGradient 10s ease-in-out infinite;
 }
 
 .header-content {
-  display: flex;
-  flex-direction: column;
+  flex: 1;
+  display: grid;
   gap: 8rpx;
 }
 
 .page-title {
   color: #ffffff;
   font-size: 40rpx;
-  font-weight: 700;
+  font-weight: 800;
+  line-height: 1.35;
 }
 
 .page-subtitle {
-  color: rgba(255, 255, 255, 0.8);
+  color: rgba(255, 255, 255, 0.86);
   font-size: 26rpx;
-}
-
-.header-action {
-  flex-shrink: 0;
-}
-
-.search-section {
-  padding: 24rpx 30rpx;
-  background-color: #ffffff;
-  margin: 0 20rpx;
-  margin-top: -20rpx;
-  border-radius: 16rpx;
-  box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.08);
-}
-
-.content-section {
-  padding: 24rpx 20rpx;
-}
-
-.loading-state {
-  display: flex;
-  justify-content: center;
-  padding: 100rpx 0;
-}
-
-.loading-text {
-  color: #999999;
-  font-size: 28rpx;
-}
-
-.empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 100rpx 40rpx;
-  text-align: center;
-}
-
-.empty-icon {
-  font-size: 100rpx;
-  margin-bottom: 32rpx;
-}
-
-.empty-title {
-  color: #333333;
-  font-size: 34rpx;
-  font-weight: 600;
-  margin-bottom: 16rpx;
-}
-
-.empty-desc {
-  color: #999999;
-  font-size: 28rpx;
   line-height: 1.6;
 }
 
-.resource-list {
-  display: flex;
-  flex-direction: column;
-  gap: 20rpx;
+.header-stats {
+  display: grid;
+  place-items: center;
+  min-width: 124rpx;
+  padding: 18rpx 14rpx;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.18);
 }
 
-.resource-card {
-  background-color: #ffffff;
-  border-radius: 16rpx;
-  padding: 28rpx;
-  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.06);
+.stat-number {
+  color: #ffffff;
+  font-size: 36rpx;
+  font-weight: 800;
+  line-height: 1.2;
 }
 
-.card-header {
-  display: flex;
-  align-items: flex-start;
-  gap: 20rpx;
-  margin-bottom: 20rpx;
+.stat-label {
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 22rpx;
 }
 
-.card-icon {
-  font-size: 48rpx;
-  flex-shrink: 0;
-}
-
-.card-title-wrap {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 8rpx;
-}
-
-.card-title {
-  color: #182033;
-  font-size: 32rpx;
-  font-weight: 600;
-}
-
-.card-meta {
-  color: #999999;
-  font-size: 24rpx;
-}
-
-.card-status {
-  color: #67c23a;
-  font-size: 24rpx;
-  padding: 6rpx 16rpx;
-  background-color: #f0f9eb;
-  border-radius: 20rpx;
-  flex-shrink: 0;
-}
-
-.card-status.failed {
-  color: #f56c6c;
-  background-color: #fef0f0;
-}
-
-.card-summary {
-  background-color: #f8fafc;
-  border-radius: 12rpx;
-  padding: 20rpx;
-  margin-bottom: 20rpx;
-}
-
-.summary-label {
-  display: block;
-  color: #2563eb;
-  font-size: 24rpx;
-  font-weight: 600;
-  margin-bottom: 10rpx;
-}
-
-.summary-content {
-  color: #666666;
-  font-size: 26rpx;
-  line-height: 1.7;
-}
-
-.summary-content.error {
-  color: #f56c6c;
-}
-
-.card-actions {
-  display: flex;
+.metrics {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
   gap: 16rpx;
 }
 
-.card-actions :deep(.u-button) {
+.metric-card {
+  min-height: 122rpx;
+  padding: 20rpx 10rpx;
+  border: 1px solid rgba(226, 232, 240, 0.94);
+  border-radius: 8px;
+  background: linear-gradient(180deg, #ffffff, #f8fafc);
+  box-shadow: 0 10rpx 26rpx rgba(15, 23, 42, 0.06);
+  text-align: center;
+  box-sizing: border-box;
+}
+
+.metric-value {
+  display: block;
+  color: #1d4ed8;
+  font-size: 32rpx;
+  font-weight: 800;
+  line-height: 1.25;
+}
+
+.metric-label {
+  display: block;
+  margin-top: 8rpx;
+  color: #64748b;
+  font-size: 24rpx;
+}
+
+.filters {
+  display: grid;
+  gap: 18rpx;
+}
+
+.empty-state {
+  display: grid;
+  gap: 14rpx;
+}
+
+.empty-title {
+  color: #111827;
+  font-size: 32rpx;
+  font-weight: 800;
+}
+
+.year-list {
+  display: grid;
+  gap: 20rpx;
+}
+
+.year-card {
+  display: grid;
+  gap: 20rpx;
+}
+
+.year-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16rpx;
+}
+
+.year-title {
+  color: #111827;
+  font-size: 34rpx;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.year-count {
+  flex-shrink: 0;
+  padding: 8rpx 16rpx;
+  border-radius: 8px;
+  color: #1d4ed8;
+  background: #eff6ff;
+  font-size: 22rpx;
+  font-weight: 700;
+}
+
+.pdf-list {
+  display: grid;
+  gap: 14rpx;
+}
+
+.pdf-row {
+  display: grid;
+  gap: 16rpx;
+  padding: 20rpx;
+  border: 1px solid rgba(226, 232, 240, 0.95);
+  border-radius: 8px;
+  background: linear-gradient(180deg, #ffffff, #f8fafc);
+}
+
+.pdf-main {
+  display: flex;
+  align-items: flex-start;
+  gap: 16rpx;
+}
+
+.pdf-text {
   flex: 1;
+  display: grid;
+  gap: 6rpx;
+}
+
+.pdf-title {
+  color: #111827;
+  font-size: 30rpx;
+  font-weight: 800;
+  line-height: 1.45;
+}
+
+.pdf-desc {
+  color: #64748b;
+  font-size: 24rpx;
+  line-height: 1.6;
+}
+
+.type-tag {
+  flex-shrink: 0;
+  padding: 8rpx 16rpx;
+  border-radius: 8px;
+  color: #ffffff;
+  font-size: 22rpx;
+  font-weight: 800;
+}
+
+.type-tag.paper {
+  background: linear-gradient(135deg, #2563eb, #14b8a6);
+}
+
+.type-tag.answer {
+  background: linear-gradient(135deg, #10b981, #f59e0b);
+}
+
+.pdf-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16rpx;
+}
+
+@keyframes heroGradient {
+  0%, 100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
 }
 </style>
+

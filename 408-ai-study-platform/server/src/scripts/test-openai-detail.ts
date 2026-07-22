@@ -1,4 +1,4 @@
-import { config } from 'dotenv';
+﻿import { config } from 'dotenv';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { env } from '../shared/env.js';
@@ -21,7 +21,6 @@ const testDirectApi = async () => {
       apiKey: env.OPENAI_API_KEY,
       model: env.OPENAI_MODEL,
       temperature: 0.2,
-      timeout: 30000,
       maxRetries: 1,
       configuration: { baseURL: env.OPENAI_BASE_URL }
     });
@@ -52,8 +51,7 @@ const testFetch = async () => {
         model: env.OPENAI_MODEL,
         messages: [{ role: 'user', content: 'Hello' }],
         max_tokens: 10
-      }),
-      timeout: 30000
+      })
     });
 
     console.log('状态码:', response.status);
@@ -70,3 +68,4 @@ const main = async () => {
 };
 
 main();
+

@@ -1,4 +1,4 @@
-import { createRequire } from 'node:module';
+﻿import { createRequire } from 'node:module';
 import { defineConfig } from 'vite';
 
 const require = createRequire(import.meta.url);
@@ -9,7 +9,8 @@ export default defineConfig({
   css: {
     preprocessorOptions: {
       scss: {
-        additionalData: '@import "uview-plus/theme.scss";'
+        quietDeps: true,
+        silenceDeprecations: ['import', 'legacy-js-api']
       }
     }
   }

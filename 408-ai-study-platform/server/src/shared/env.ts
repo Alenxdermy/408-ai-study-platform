@@ -1,4 +1,4 @@
-import { config } from 'dotenv';
+﻿import { config } from 'dotenv';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { z } from 'zod';
@@ -27,7 +27,9 @@ const envSchema = z.object({
   CHROMA_URL: z.string().url().default('http://localhost:8000'),
   CHROMA_COLLECTION: z.string().default('ai_408_knowledge'),
   UPLOAD_DIR: z.string().default('uploads'),
+  STATIC_DOCS_DIR: z.string().default(path.resolve(process.cwd(), '../../docs')),
   LOG_LEVEL: z.string().default('info')
 });
 
 export const env = envSchema.parse(process.env);
+

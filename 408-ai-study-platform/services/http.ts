@@ -1,4 +1,10 @@
-export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://127.0.0.1:3000/api';
+﻿let defaultApiBaseUrl = 'http://127.0.0.1:3000/api';
+
+// #ifdef MP-WEIXIN
+defaultApiBaseUrl = 'http://localhost:3000/api';
+// #endif
+
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? defaultApiBaseUrl;
 
 interface ApiResponse<T> {
   code: number | string;
@@ -57,3 +63,4 @@ export const http = {
   get: <T = unknown>(url: string, options?: RequestOptions) => request<T>('GET', url, undefined, options),
   post: <T = unknown>(url: string, data?: unknown) => request<T>('POST', url, data)
 };
+

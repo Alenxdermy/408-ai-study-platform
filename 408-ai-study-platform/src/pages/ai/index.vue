@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { ref } from 'vue';
 import { http } from '../../services/http';
 import { useAuthStore } from '../../stores/auth';
@@ -49,14 +49,58 @@ const askTeacher = async () => {
 </template>
 
 <style scoped>
+.section:first-child {
+  padding: 30rpx;
+  border-radius: 8px;
+  border: 1px solid rgba(191, 219, 254, 0.76);
+  background:
+    linear-gradient(135deg, rgba(37, 99, 235, 0.94), rgba(20, 184, 166, 0.88), rgba(245, 158, 11, 0.78)),
+    #2563eb;
+  background-size: 190% 190%;
+  box-shadow: 0 18rpx 42rpx rgba(37, 99, 235, 0.16);
+  animation: heroGradient 10s ease-in-out infinite;
+}
+
+.section:first-child .title,
+.section:first-child .muted {
+  color: #ffffff;
+}
+
+.section:first-child .muted {
+  margin-top: 12rpx;
+  color: rgba(255, 255, 255, 0.86);
+}
+
 .form {
   display: grid;
   gap: 18rpx;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.98));
+}
+
+.form :deep(.u-textarea) {
+  border-radius: 8px;
+  box-shadow: inset 0 0 0 1px rgba(226, 232, 240, 0.7);
 }
 
 .answer {
-  color: #344054;
-  line-height: 1.7;
+  color: #334155;
+  line-height: 1.75;
   white-space: pre-wrap;
+  border-color: rgba(191, 219, 254, 0.78);
+  background: linear-gradient(135deg, #ffffff 0%, #eff6ff 56%, #f0fdfa 100%);
+}
+
+.answer text {
+  font-size: 28rpx;
+}
+
+@keyframes heroGradient {
+  0%, 100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
 }
 </style>
+

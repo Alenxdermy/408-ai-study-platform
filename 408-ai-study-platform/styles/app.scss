@@ -1,4 +1,4 @@
-@import "uview-plus/index.scss";
+﻿@use "uview-plus/index.scss";
 
 page {
   min-height: 100%;
@@ -8,38 +8,111 @@ page {
 }
 
 .page {
+  position: relative;
   min-height: 100vh;
-  padding: 24rpx;
+  padding: 28rpx 24rpx 44rpx;
   box-sizing: border-box;
+  overflow: hidden;
+  background:
+    linear-gradient(120deg, rgba(37, 99, 235, 0.10), rgba(20, 184, 166, 0.08), rgba(245, 158, 11, 0.08)),
+    linear-gradient(180deg, #f8fbff 0%, #f5f7fb 42%, #ffffff 100%);
+  background-size: 220% 220%, 100% 100%;
+  animation: pageGradientFlow 14s ease-in-out infinite;
 }
 
 .section {
   margin-bottom: 24rpx;
+  animation: softRise 420ms ease-out both;
 }
 
 .panel {
-  background: #ffffff;
-  border: 1px solid #e5e9f2;
+  position: relative;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.94);
+  border: 1px solid rgba(226, 232, 240, 0.95);
   border-radius: 8px;
-  padding: 24rpx;
+  padding: 26rpx;
+  box-shadow: 0 14rpx 38rpx rgba(15, 23, 42, 0.07);
+  box-sizing: border-box;
+  animation: softRise 460ms ease-out both;
+}
+
+.panel::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4rpx;
+  background: linear-gradient(90deg, #2563eb, #14b8a6, #f59e0b);
+  background-size: 180% 100%;
+  animation: accentFlow 5.5s ease-in-out infinite;
 }
 
 .title {
   display: block;
-  color: #182033;
-  font-size: 36rpx;
-  font-weight: 700;
-  line-height: 1.4;
+  color: #111827;
+  font-size: 38rpx;
+  font-weight: 800;
+  line-height: 1.35;
+  letter-spacing: 0;
 }
 
 .muted {
   display: block;
-  color: #667085;
+  color: #5f6b7a;
   font-size: 26rpx;
-  line-height: 1.6;
+  line-height: 1.65;
 }
 
 .button-row {
   display: grid;
   gap: 16rpx;
+  animation: softRise 540ms ease-out both;
+}
+
+.button-row :deep(.u-button),
+.actions :deep(.u-button),
+.resource-actions :deep(.u-button),
+.card-actions :deep(.u-button),
+.form :deep(.u-button) {
+  box-shadow: 0 10rpx 22rpx rgba(37, 99, 235, 0.13);
+}
+
+@keyframes pageGradientFlow {
+  0%, 100% {
+    background-position: 0% 50%, 0 0;
+  }
+  50% {
+    background-position: 100% 50%, 0 0;
+  }
+}
+
+@keyframes accentFlow {
+  0%, 100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+@keyframes softRise {
+  from {
+    opacity: 0;
+    transform: translateY(18rpx);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes gentlePulse {
+  0%, 100% {
+    opacity: 0.72;
+  }
+  50% {
+    opacity: 1;
+  }
 }

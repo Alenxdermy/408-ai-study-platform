@@ -3,25 +3,22 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "workspaces": [
-    "server"
-  ],
   "scripts": {
     "dev:mp-weixin": "uni -p mp-weixin",
     "build:mp-weixin": "uni build -p mp-weixin",
     "dev:h5": "uni -p h5",
     "build:h5": "uni build -p h5",
-    "dev:server": "pnpm --dir server dev",
-    "build:server": "pnpm --dir server build",
-    "seed:questions": "pnpm --dir server seed:questions",
-    "lint": "eslint \"**/*.{ts,vue}\" --ignore-pattern \"server/dist/**\" --ignore-pattern \"dist/**\" && pnpm --dir server lint",
-    "test": "pnpm --dir server test"
+    "dev:server": "npm --prefix server run dev",
+    "build:server": "npm --prefix server run build",
+    "seed:questions": "npm --prefix server run seed:questions",
+    "lint": "eslint \"**/*.{ts,vue}\" --ignore-pattern \"server/dist/**\" --ignore-pattern \"dist/**\" && npm --prefix server run lint",
+    "test": "npm --prefix server run test"
   },
   "dependencies": {
-    "@dcloudio/uni-app": "3.0.0-alpha-5020120260710001",
-    "@dcloudio/uni-components": "3.0.0-alpha-5020120260710001",
-    "@dcloudio/uni-h5": "3.0.0-alpha-5020120260710001",
-    "@dcloudio/uni-mp-weixin": "3.0.0-alpha-5020120260710001",
+    "@dcloudio/uni-app": "3.0.0-alpha-5010220260604001",
+    "@dcloudio/uni-components": "3.0.0-alpha-5010220260604001",
+    "@dcloudio/uni-h5": "3.0.0-alpha-5010220260604001",
+    "@dcloudio/uni-mp-weixin": "3.0.0-alpha-5010220260604001",
     "@dcloudio/uni-ui": "1.5.12",
     "@vitejs/plugin-vue": "5.2.4",
     "@vue/runtime-dom": "3.4.21",
@@ -31,8 +28,8 @@
     "vue": "^3.5.11"
   },
   "devDependencies": {
-    "@dcloudio/types": "3.4.32",
-    "@dcloudio/vite-plugin-uni": "3.0.0-alpha-5020120260710001",
+    "@dcloudio/types": "3.4.31",
+    "@dcloudio/vite-plugin-uni": "3.0.0-alpha-5010220260604001",
     "@types/node": "^22.10.7",
     "@typescript-eslint/eslint-plugin": "^8.20.0",
     "@typescript-eslint/parser": "^8.20.0",
@@ -47,3 +44,4 @@
     "node": ">=20.0.0"
   }
 }
+
