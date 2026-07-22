@@ -1,4 +1,4 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
 import { useAuthStore } from '../../stores/auth';
 import { useStudyStore } from '../../stores/study';
@@ -8,6 +8,25 @@ const study = useStudyStore();
 const loading = ref(false);
 
 const recentCount = computed(() => study.dashboard.recentRecords?.length ?? 0);
+const nickname = computed(() => String(auth.user?.nickname ?? '408 考生'));
+
+const statCards = computed(() => [
+  { value: '10', label: '每日一练', tone: 'blue' },
+  { value: '30min', label: '建议学习', tone: 'teal' },
+  { value: String(recentCount.value), label: '近期记录', tone: 'amber' }
+]);
+
+const todaySteps = [
+  { title: '基础刷题', desc: '完成今日练习，快速暴露薄弱知识点', index: '01' },
+  { title: '真题阅读', desc: '查看 PDF 真题和答案，建立题感', index: '02' },
+  { title: 'AI 复盘', desc: '把卡住的问题交给 AI 讲题整理', index: '03' }
+];
+
+const quickActions = [
+  { title: '刷题训练', desc: '每日一练与自动解析', action: 'questions' },
+  { title: '真题资料', desc: '2009-2025 PDF', action: 'resources' },
+  { title: 'AI 讲题', desc: '答案、考点、易错点', action: 'ai' }
+];
 
 onMounted(async () => {
   loading.value = true;
@@ -24,38 +43,71 @@ onMounted(async () => {
 const goQuestions = () => uni.switchTab({ url: '/pages/questions/index' });
 const goResources = () => uni.switchTab({ url: '/pages/resources/index' });
 const goAi = () => uni.switchTab({ url: '/pages/ai/index' });
+
+const handleQuickAction = (action: string) => {
+  if (action === 'questions') goQuestions();
+  if (action === 'resources') goResources();
+  if (action === 'ai') goAi();
+};
 </script>
 
 <template>
   <view class="page">
-    <view class="hero section">
-      <text class="title">408 AI 导师</text>
-      <text class="subtitle">AI + 刷题 + PDF 资料库 + 学习规划</text>
+    <view class="hero hero-shell section">
+      <view class="hero-main">
+        <text class="hero-kicker">408 AI STUDY</text>
+        <text class="hero-title">今天从一个清晰计划开始</text>
+        <text class="hero-subtitle">{{ nickname }}，按“刷题 - 真题 - AI复盘”完成今日学习闭环。</text>
+      </view>
+      <view class="hero-badge">
+        <text class="badge-value">AI</text>
+        <text class="badge-label">导师在线</text>
+      </view>
     </view>
 
     <view class="metrics section">
-      <view class="metric-card">
-        <text class="metric">10</text>
-        <text class="muted">每日一练</text>
-      </view>
-      <view class="metric-card">
-        <text class="metric">30min</text>
-        <text class="muted">建议学习</text>
-      </view>
-      <view class="metric-card">
-        <text class="metric">{{ recentCount }}</text>
-        <text class="muted">近期记录</text>
+      <view v-for="item in statCards" :key="item.label" class="metric-card" :class="item.tone">
+        <text class="metric">{{ item.value }}</text>
+        <text class="metric-label">{{ item.label }}</text>
       </view>
     </view>
 
-    <view class="panel section">
-      <text class="card-title">今日计划</text>
-      <text class="muted">先完成基础刷题，再阅读 PDF 资料，最后用 AI 讲题整理易错点。</text>
+    <view class="panel section plan-panel">
+      <view class="section-head">
+        <view>
+          <text class="eyebrow">TODAY</text>
+          <text class="card-title">今日学习路径</text>
+        </view>
+        <text class="status-pill">{{ loading ? '同步中' : '已就绪' }}</text>
+      </view>
+
+      <view class="step-list">
+        <view v-for="step in todaySteps" :key="step.index" class="step-item">
+          <text class="step-index">{{ step.index }}</text>
+          <view class="step-copy">
+            <text class="step-title">{{ step.title }}</text>
+            <text class="muted">{{ step.desc }}</text>
+          </view>
+        </view>
+      </view>
     </view>
 
-    <view class="panel section">
-      <text class="card-title">AI 推荐</text>
-      <text class="muted">没有题库时，先上传教材章节、讲义或真题 PDF，建立资料库后再逐步生成题库。</text>
+    <view class="quick-grid section">
+      <view
+        v-for="item in quickActions"
+        :key="item.title"
+        class="quick-card soft-card"
+        @click="handleQuickAction(item.action)"
+      >
+        <text class="quick-title">{{ item.title }}</text>
+        <text class="quick-desc">{{ item.desc }}</text>
+      </view>
+    </view>
+
+    <view class="panel section recommendation">
+      <text class="eyebrow">AI RECOMMEND</text>
+      <text class="card-title">没有题库也能推进</text>
+      <text class="muted">先使用固定真题 PDF 进行阅读和下载，后续再从真题、讲义或章节资料中抽取结构化题库。</text>
     </view>
 
     <view class="button-row">
@@ -68,48 +120,63 @@ const goAi = () => uni.switchTab({ url: '/pages/ai/index' });
 
 <style scoped>
 .hero {
-  position: relative;
-  overflow: hidden;
-  padding: 42rpx 28rpx 34rpx;
-  border: 1px solid rgba(191, 219, 254, 0.86);
-  border-radius: 8px;
-  background:
-    linear-gradient(135deg, rgba(37, 99, 235, 0.95), rgba(20, 184, 166, 0.88) 58%, rgba(245, 158, 11, 0.82)),
-    #2563eb;
-  background-size: 180% 180%;
-  box-shadow: 0 18rpx 42rpx rgba(37, 99, 235, 0.18);
-  animation: heroGradient 9s ease-in-out infinite, softRise 360ms ease-out both;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 22rpx;
+  padding: 40rpx 30rpx 34rpx;
 }
 
-.hero::after {
-  content: "";
-  position: absolute;
-  left: 28rpx;
-  right: 28rpx;
-  bottom: 0;
-  height: 4rpx;
-  background: rgba(255, 255, 255, 0.55);
-  animation: gentlePulse 2.6s ease-in-out infinite;
-}
-
-.hero .title,
-.hero .subtitle {
+.hero-main {
   position: relative;
   z-index: 1;
+  flex: 1;
+  display: grid;
+  gap: 12rpx;
+}
+
+.hero-kicker {
+  color: rgba(255, 255, 255, 0.76);
+  font-size: 22rpx;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.hero-title {
   color: #ffffff;
-}
-
-.hero .title {
   font-size: 46rpx;
-  text-shadow: 0 8rpx 24rpx rgba(15, 23, 42, 0.16);
+  font-weight: 900;
+  line-height: 1.25;
 }
 
-.subtitle {
-  display: block;
-  margin-top: 14rpx;
+.hero-subtitle {
   color: rgba(255, 255, 255, 0.88);
-  font-size: 28rpx;
-  line-height: 1.6;
+  font-size: 27rpx;
+  line-height: 1.65;
+}
+
+.hero-badge {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  flex: 0 0 132rpx;
+  height: 132rpx;
+  border: 1px solid rgba(255, 255, 255, 0.26);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.badge-value {
+  color: #ffffff;
+  font-size: 38rpx;
+  font-weight: 900;
+  line-height: 1.1;
+}
+
+.badge-label {
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 21rpx;
 }
 
 .metrics {
@@ -120,7 +187,7 @@ const goAi = () => uni.switchTab({ url: '/pages/ai/index' });
 
 .metric-card {
   position: relative;
-  min-height: 144rpx;
+  min-height: 142rpx;
   padding: 22rpx 12rpx;
   border: 1px solid rgba(226, 232, 240, 0.94);
   border-radius: 8px;
@@ -138,32 +205,121 @@ const goAi = () => uni.switchTab({ url: '/pages/ai/index' });
   right: 18rpx;
   bottom: 0;
   height: 4rpx;
-  background: linear-gradient(90deg, #2563eb, #14b8a6, #f59e0b);
+  background: #2563eb;
+}
+
+.metric-card.teal::after {
+  background: #14b8a6;
+}
+
+.metric-card.amber::after {
+  background: #f59e0b;
 }
 
 .metric {
   display: block;
   color: #1d4ed8;
-  font-size: 42rpx;
-  font-weight: 800;
+  font-size: 40rpx;
+  font-weight: 900;
   line-height: 1.2;
 }
 
-.card-title {
+.metric-label {
   display: block;
-  margin-bottom: 12rpx;
-  color: #111827;
-  font-size: 31rpx;
+  margin-top: 10rpx;
+  color: #64748b;
+  font-size: 24rpx;
+}
+
+.section-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16rpx;
+  margin-bottom: 20rpx;
+}
+
+.status-pill {
+  flex-shrink: 0;
+  padding: 8rpx 16rpx;
+  border-radius: 8px;
+  color: #0f766e;
+  background: #ccfbf1;
+  font-size: 22rpx;
   font-weight: 800;
 }
 
-@keyframes heroGradient {
-  0%, 100% {
-    background-position: 0% 50%;
-  }
-  50% {
-    background-position: 100% 50%;
-  }
+.step-list {
+  display: grid;
+  gap: 14rpx;
+}
+
+.step-item {
+  display: flex;
+  gap: 16rpx;
+  padding: 18rpx;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #f8fafc, #eff6ff);
+}
+
+.step-index {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 56rpx;
+  height: 56rpx;
+  border-radius: 8px;
+  color: #ffffff;
+  background: linear-gradient(135deg, #2563eb, #14b8a6);
+  font-size: 22rpx;
+  font-weight: 900;
+}
+
+.step-copy {
+  flex: 1;
+  display: grid;
+  gap: 4rpx;
+}
+
+.step-title {
+  color: #111827;
+  font-size: 28rpx;
+  font-weight: 800;
+  line-height: 1.45;
+}
+
+.quick-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16rpx;
+}
+
+.quick-card {
+  min-height: 156rpx;
+  padding: 22rpx 16rpx;
+}
+
+.quick-card:active {
+  transform: scale(0.99);
+}
+
+.quick-title {
+  display: block;
+  color: #111827;
+  font-size: 27rpx;
+  font-weight: 900;
+  line-height: 1.35;
+}
+
+.quick-desc {
+  display: block;
+  margin-top: 10rpx;
+  color: #64748b;
+  font-size: 22rpx;
+  line-height: 1.5;
+}
+
+.recommendation {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(239, 246, 255, 0.96), rgba(240, 253, 250, 0.9));
 }
 </style>
-

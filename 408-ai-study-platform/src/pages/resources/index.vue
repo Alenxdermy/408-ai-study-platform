@@ -247,8 +247,9 @@ const changeCategory = (index: number) => {
 
 <template>
   <view class="page">
-    <view class="header-section section">
+    <view class="header-section hero-shell section">
       <view class="header-content">
+        <text class="header-kicker">PDF LIBRARY</text>
         <text class="page-title">408 真题资料库</text>
         <text class="page-subtitle">固定收录 2009-2025 年真题与答案，支持预览和下载</text>
       </view>
@@ -274,6 +275,10 @@ const changeCategory = (index: number) => {
     </view>
 
     <view class="panel section filters">
+      <view class="filter-head">
+        <text class="card-title">资料筛选</text>
+        <text class="muted">点击下方年份可查看对应真题与答案</text>
+      </view>
       <u-search v-model="keyword" placeholder="搜索年份、真题、答案" :show-action="false" />
       <u-subsection :list="categoryOptions" key-name="name" mode="subsection" @change="changeCategory" />
     </view>
@@ -286,7 +291,10 @@ const changeCategory = (index: number) => {
     <view v-else class="year-list">
       <view v-for="group in filteredYearGroups" :key="group.year" class="panel year-card">
         <view class="year-header">
-          <text class="year-title">{{ group.year }} 年</text>
+          <view class="year-title-wrap">
+            <text class="year-dot"></text>
+            <text class="year-title">{{ group.year }} 年</text>
+          </view>
           <text class="year-count">{{ group.items.length }} 份资料</text>
         </view>
 
@@ -312,26 +320,25 @@ const changeCategory = (index: number) => {
 
 <style scoped>
 .header-section {
-  position: relative;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 22rpx;
   padding: 34rpx 30rpx;
-  border: 1px solid rgba(191, 219, 254, 0.72);
-  border-radius: 8px;
-  background:
-    linear-gradient(135deg, rgba(37, 99, 235, 0.96), rgba(20, 184, 166, 0.9) 58%, rgba(245, 158, 11, 0.84)),
-    #2563eb;
-  background-size: 190% 190%;
-  box-shadow: 0 18rpx 42rpx rgba(37, 99, 235, 0.16);
-  animation: heroGradient 10s ease-in-out infinite;
 }
 
 .header-content {
+  position: relative;
+  z-index: 1;
   flex: 1;
   display: grid;
   gap: 8rpx;
+}
+
+.header-kicker {
+  color: rgba(255, 255, 255, 0.76);
+  font-size: 21rpx;
+  font-weight: 900;
 }
 
 .page-title {
@@ -348,6 +355,8 @@ const changeCategory = (index: number) => {
 }
 
 .header-stats {
+  position: relative;
+  z-index: 1;
   display: grid;
   place-items: center;
   min-width: 124rpx;
@@ -375,6 +384,8 @@ const changeCategory = (index: number) => {
 }
 
 .metric-card {
+  position: relative;
+  overflow: hidden;
   min-height: 122rpx;
   padding: 20rpx 10rpx;
   border: 1px solid rgba(226, 232, 240, 0.94);
@@ -383,6 +394,16 @@ const changeCategory = (index: number) => {
   box-shadow: 0 10rpx 26rpx rgba(15, 23, 42, 0.06);
   text-align: center;
   box-sizing: border-box;
+}
+
+.metric-card::after {
+  content: "";
+  position: absolute;
+  left: 18rpx;
+  right: 18rpx;
+  bottom: 0;
+  height: 4rpx;
+  background: linear-gradient(90deg, #2563eb, #14b8a6, #f59e0b);
 }
 
 .metric-value {
@@ -405,6 +426,11 @@ const changeCategory = (index: number) => {
   gap: 18rpx;
 }
 
+.filter-head {
+  display: grid;
+  gap: 2rpx;
+}
+
 .empty-state {
   display: grid;
   gap: 14rpx;
@@ -424,6 +450,7 @@ const changeCategory = (index: number) => {
 .year-card {
   display: grid;
   gap: 20rpx;
+  animation: softRise 420ms ease-out both;
 }
 
 .year-header {
@@ -438,6 +465,20 @@ const changeCategory = (index: number) => {
   font-size: 34rpx;
   font-weight: 800;
   line-height: 1.35;
+}
+
+.year-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+}
+
+.year-dot {
+  width: 18rpx;
+  height: 18rpx;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #2563eb, #14b8a6);
+  box-shadow: 0 0 0 8rpx rgba(37, 99, 235, 0.08);
 }
 
 .year-count {
@@ -462,6 +503,13 @@ const changeCategory = (index: number) => {
   border: 1px solid rgba(226, 232, 240, 0.95);
   border-radius: 8px;
   background: linear-gradient(180deg, #ffffff, #f8fafc);
+  box-shadow: 0 8rpx 22rpx rgba(15, 23, 42, 0.04);
+  transition: transform 160ms ease, border-color 160ms ease;
+}
+
+.pdf-row:active {
+  transform: scale(0.99);
+  border-color: rgba(37, 99, 235, 0.38);
 }
 
 .pdf-main {
@@ -512,13 +560,5 @@ const changeCategory = (index: number) => {
   gap: 16rpx;
 }
 
-@keyframes heroGradient {
-  0%, 100% {
-    background-position: 0% 50%;
-  }
-  50% {
-    background-position: 100% 50%;
-  }
-}
 </style>
 

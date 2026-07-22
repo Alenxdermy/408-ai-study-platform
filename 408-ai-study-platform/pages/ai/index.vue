@@ -32,43 +32,97 @@ const askTeacher = async () => {
 
 <template>
   <view class="page">
-    <view class="section">
-      <text class="title">AI 讲题</text>
-      <text class="muted">粘贴 408 题目或输入疑问，AI 会按答案、选项解析、考点、易错点和建议输出。</text>
+    <view class="ai-hero hero-shell section">
+      <view class="hero-copy">
+        <text class="hero-kicker">AI TEACHER</text>
+        <text class="hero-title">AI 讲题</text>
+        <text class="hero-desc">粘贴 408 题目或输入疑问，按答案、解析、考点、易错点和建议输出。</text>
+      </view>
+      <view class="teacher-badge">
+        <text class="badge-main">24h</text>
+        <text class="badge-sub">答疑</text>
+      </view>
     </view>
 
     <view class="panel section form">
+      <view class="form-head">
+        <text class="card-title">输入题目或知识点</text>
+        <text class="muted">建议粘贴完整题干和选项，AI 解析会更稳定。</text>
+      </view>
       <u-textarea v-model="question" placeholder="粘贴题目，或输入你卡住的知识点" height="180" />
       <u-button type="primary" :loading="loading" text="发送" @click="askTeacher" />
     </view>
 
+    <view v-if="loading && !answer" class="panel answer waiting">
+      <text class="loading-dot"></text>
+      <text class="muted">AI 正在整理解析...</text>
+    </view>
+
     <view v-if="answer" class="panel answer">
+      <text class="answer-title">解析结果</text>
       <text>{{ answer }}</text>
     </view>
   </view>
 </template>
 
 <style scoped>
-.section:first-child {
-  padding: 30rpx;
-  border-radius: 8px;
-  border: 1px solid rgba(191, 219, 254, 0.76);
-  background:
-    linear-gradient(135deg, rgba(37, 99, 235, 0.94), rgba(20, 184, 166, 0.88), rgba(245, 158, 11, 0.78)),
-    #2563eb;
-  background-size: 190% 190%;
-  box-shadow: 0 18rpx 42rpx rgba(37, 99, 235, 0.16);
-  animation: heroGradient 10s ease-in-out infinite;
+.ai-hero {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 22rpx;
+  padding: 34rpx 30rpx;
 }
 
-.section:first-child .title,
-.section:first-child .muted {
+.hero-copy {
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  display: grid;
+  gap: 10rpx;
+}
+
+.hero-kicker {
+  color: rgba(255, 255, 255, 0.76);
+  font-size: 21rpx;
+  font-weight: 900;
+}
+
+.hero-title {
   color: #ffffff;
+  font-size: 42rpx;
+  font-weight: 900;
+  line-height: 1.25;
 }
 
-.section:first-child .muted {
-  margin-top: 12rpx;
+.hero-desc {
   color: rgba(255, 255, 255, 0.86);
+  font-size: 25rpx;
+  line-height: 1.65;
+}
+
+.teacher-badge {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  flex: 0 0 118rpx;
+  height: 118rpx;
+  border: 1px solid rgba(255, 255, 255, 0.26);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.badge-main {
+  color: #ffffff;
+  font-size: 34rpx;
+  font-weight: 900;
+  line-height: 1.1;
+}
+
+.badge-sub {
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 21rpx;
 }
 
 .form {
@@ -77,12 +131,19 @@ const askTeacher = async () => {
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.98));
 }
 
+.form-head {
+  display: grid;
+  gap: 2rpx;
+}
+
 .form :deep(.u-textarea) {
   border-radius: 8px;
   box-shadow: inset 0 0 0 1px rgba(226, 232, 240, 0.7);
 }
 
 .answer {
+  display: grid;
+  gap: 16rpx;
   color: #334155;
   line-height: 1.75;
   white-space: pre-wrap;
@@ -90,17 +151,29 @@ const askTeacher = async () => {
   background: linear-gradient(135deg, #ffffff 0%, #eff6ff 56%, #f0fdfa 100%);
 }
 
+.answer-title {
+  color: #111827;
+  font-size: 31rpx;
+  font-weight: 900;
+  line-height: 1.35;
+}
+
 .answer text {
   font-size: 28rpx;
 }
 
-@keyframes heroGradient {
-  0%, 100% {
-    background-position: 0% 50%;
-  }
-  50% {
-    background-position: 100% 50%;
-  }
+.waiting {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+}
+
+.loading-dot {
+  width: 18rpx;
+  height: 18rpx;
+  border-radius: 50%;
+  background: #2563eb;
+  animation: gentlePulse 1.2s ease-in-out infinite;
 }
 </style>
 

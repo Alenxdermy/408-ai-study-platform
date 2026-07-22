@@ -110,21 +110,38 @@ void loadDaily();
 
 <template>
   <view class="page">
-    <view class="section header-row">
-      <view>
-        <text class="title">刷题训练</text>
-        <text class="muted">每日一练、随机训练、错题回收</text>
+    <view class="header-row hero-shell section">
+      <view class="header-copy">
+        <text class="header-kicker">QUESTION PRACTICE</text>
+        <text class="header-title">刷题训练</text>
+        <text class="header-desc">每日一练、自动评分、收藏回看，先把薄弱点暴露出来。</text>
       </view>
       <text class="progress">{{ progressText }}</text>
     </view>
 
-    <view v-if="loading" class="panel">
-      <text class="muted">加载中...</text>
+    <view class="mode-strip section">
+      <view class="mode-item active">
+        <text class="mode-title">每日一练</text>
+        <text class="mode-desc">当前模式</text>
+      </view>
+      <view class="mode-item">
+        <text class="mode-title">随机刷题</text>
+        <text class="mode-desc">待接入</text>
+      </view>
+      <view class="mode-item">
+        <text class="mode-title">错题回收</text>
+        <text class="mode-desc">待接入</text>
+      </view>
+    </view>
+
+    <view v-if="loading" class="panel loading-card">
+      <text class="loading-dot"></text>
+      <text class="muted">正在加载今日练习...</text>
     </view>
 
     <view v-else-if="!currentQuestion" class="panel empty">
       <text class="empty-title">暂时没有题目</text>
-      <text class="muted">你还没有题库。先在资料库上传 PDF，沉淀教材、讲义和真题解析，后续再生成结构化题库。</text>
+      <text class="muted">你还没有结构化题库。先阅读固定真题 PDF 和答案解析，后续再从资料中生成题库。</text>
       <u-button text="重新加载" @click="loadDaily" />
     </view>
 
@@ -169,25 +186,100 @@ void loadDaily();
   align-items: flex-start;
   justify-content: space-between;
   gap: 24rpx;
-  padding: 26rpx;
-  border-radius: 8px;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(239, 246, 255, 0.96));
-  border: 1px solid rgba(191, 219, 254, 0.72);
-  box-shadow: 0 14rpx 34rpx rgba(37, 99, 235, 0.08);
+  padding: 34rpx 30rpx;
+}
+
+.header-copy {
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  display: grid;
+  gap: 10rpx;
+}
+
+.header-kicker {
+  color: rgba(255, 255, 255, 0.76);
+  font-size: 21rpx;
+  font-weight: 900;
+}
+
+.header-title {
+  color: #ffffff;
+  font-size: 42rpx;
+  font-weight: 900;
+  line-height: 1.25;
+}
+
+.header-desc {
+  color: rgba(255, 255, 255, 0.86);
+  font-size: 25rpx;
+  line-height: 1.6;
 }
 
 .progress {
+  position: relative;
+  z-index: 1;
   min-width: 96rpx;
   padding: 10rpx 14rpx;
   border-radius: 8px;
   color: #ffffff;
-  background: linear-gradient(135deg, #2563eb, #14b8a6);
-  background-size: 160% 160%;
+  border: 1px solid rgba(255, 255, 255, 0.26);
+  background: rgba(255, 255, 255, 0.16);
   font-size: 28rpx;
   font-weight: 800;
   line-height: 1.4;
   text-align: center;
-  animation: heroGradient 7s ease-in-out infinite;
+}
+
+.mode-strip {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14rpx;
+}
+
+.mode-item {
+  min-height: 112rpx;
+  padding: 18rpx 12rpx;
+  border: 1px solid rgba(226, 232, 240, 0.94);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.82);
+  box-shadow: 0 8rpx 22rpx rgba(15, 23, 42, 0.05);
+  box-sizing: border-box;
+}
+
+.mode-item.active {
+  border-color: rgba(37, 99, 235, 0.38);
+  background: linear-gradient(135deg, #eff6ff, #ecfeff);
+}
+
+.mode-title {
+  display: block;
+  color: #111827;
+  font-size: 25rpx;
+  font-weight: 900;
+  line-height: 1.35;
+}
+
+.mode-desc {
+  display: block;
+  margin-top: 8rpx;
+  color: #64748b;
+  font-size: 21rpx;
+  line-height: 1.4;
+}
+
+.loading-card {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+}
+
+.loading-dot {
+  width: 18rpx;
+  height: 18rpx;
+  border-radius: 50%;
+  background: #2563eb;
+  animation: gentlePulse 1.2s ease-in-out infinite;
 }
 
 .question-meta {
@@ -232,7 +324,7 @@ void loadDaily();
   background: linear-gradient(180deg, #ffffff, #f8fafc);
   box-sizing: border-box;
   box-shadow: 0 8rpx 20rpx rgba(15, 23, 42, 0.04);
-  transition: transform 160ms ease, border-color 160ms ease, background 160ms ease;
+  transition: transform 160ms ease, border-color 160ms ease, background 160ms ease, box-shadow 160ms ease;
 }
 
 .option:active {
@@ -288,6 +380,7 @@ void loadDaily();
   border: 1px solid rgba(187, 247, 208, 0.86);
   border-radius: 8px;
   background: linear-gradient(135deg, rgba(240, 253, 244, 0.95), rgba(255, 251, 235, 0.82));
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.72);
 }
 
 .result {
@@ -322,13 +415,5 @@ void loadDaily();
   font-weight: 800;
 }
 
-@keyframes heroGradient {
-  0%, 100% {
-    background-position: 0% 50%;
-  }
-  50% {
-    background-position: 100% 50%;
-  }
-}
 </style>
 
