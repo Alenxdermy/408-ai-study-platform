@@ -1,8 +1,4 @@
-﻿let defaultApiBaseUrl = 'http://127.0.0.1:3000/api';
-
-// #ifdef MP-WEIXIN
-defaultApiBaseUrl = 'http://localhost:3000/api';
-// #endif
+const defaultApiBaseUrl = 'http://127.0.0.1:3000/api';
 
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? defaultApiBaseUrl;
 
@@ -20,11 +16,13 @@ const buildUrl = (url: string, params?: RequestOptions['params']) => {
   const fullUrl = url.startsWith('http') ? url : `${API_BASE_URL}${url}`;
   if (!params) return fullUrl;
 
-  const parsedUrl = new URL(fullUrl);
-  Object.entries(params).forEach(([key, value]) => {
-    if (value !== undefined && value !== '') parsedUrl.searchParams.set(key, String(value));
-  });
-  return parsedUrl.toString();
+  const query = Object.entries(params)
+    .filter(([, value]) => value !== undefined && value !== '')
+    .map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(String(value))}`)
+    .join('&');
+
+  if (!query) return fullUrl;
+  return `${fullUrl}${fullUrl.includes('?') ? '&' : '?'}${query}`;
 };
 
 let isRefreshing = false;
@@ -109,4 +107,3 @@ export const http = {
   get: <T = unknown>(url: string, options?: RequestOptions) => request<T>('GET', url, undefined, options),
   post: <T = unknown>(url: string, data?: unknown) => request<T>('POST', url, data)
 };
-

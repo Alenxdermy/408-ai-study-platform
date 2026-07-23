@@ -28,6 +28,11 @@ const quickActions = [
   { title: 'AI 讲题', desc: '答案、考点、易错点', action: 'ai' }
 ];
 
+const focusCards = [
+  { title: '资料入库', value: '34', desc: '真题与答案' },
+  { title: '学习闭环', value: '3步', desc: '刷题-阅读-复盘' }
+];
+
 onMounted(async () => {
   loading.value = true;
   try {
@@ -62,6 +67,13 @@ const handleQuickAction = (action: string) => {
       <view class="hero-badge">
         <text class="badge-value">AI</text>
         <text class="badge-label">导师在线</text>
+      </view>
+      <view class="hero-footer">
+        <view class="hero-progress">
+          <text class="progress-label">今日建议进度</text>
+          <view class="progress-track"><view class="progress-fill"></view></view>
+        </view>
+        <text class="progress-percent">68%</text>
       </view>
     </view>
 
@@ -104,6 +116,16 @@ const handleQuickAction = (action: string) => {
       </view>
     </view>
 
+    <view class="focus-grid section">
+      <view v-for="item in focusCards" :key="item.title" class="focus-card soft-card">
+        <text class="focus-value">{{ item.value }}</text>
+        <view class="focus-copy">
+          <text class="focus-title">{{ item.title }}</text>
+          <text class="focus-desc">{{ item.desc }}</text>
+        </view>
+      </view>
+    </view>
+
     <view class="panel section recommendation">
       <text class="eyebrow">AI RECOMMEND</text>
       <text class="card-title">没有题库也能推进</text>
@@ -120,11 +142,13 @@ const handleQuickAction = (action: string) => {
 
 <style scoped>
 .hero {
+  position: relative;
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 22rpx;
-  padding: 40rpx 30rpx 34rpx;
+  flex-wrap: wrap;
+  padding: 40rpx 30rpx 32rpx;
 }
 
 .hero-main {
@@ -165,6 +189,7 @@ const handleQuickAction = (action: string) => {
   border: 1px solid rgba(255, 255, 255, 0.26);
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.16);
+  animation: softFloat 4s ease-in-out infinite;
 }
 
 .badge-value {
@@ -177,6 +202,65 @@ const handleQuickAction = (action: string) => {
 .badge-label {
   color: rgba(255, 255, 255, 0.78);
   font-size: 21rpx;
+}
+
+.hero-footer {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 18rpx;
+  width: 100%;
+  margin-top: 6rpx;
+  padding: 18rpx;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.13);
+  box-sizing: border-box;
+}
+
+.hero-progress {
+  flex: 1;
+  display: grid;
+  gap: 10rpx;
+}
+
+.progress-label {
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 22rpx;
+  font-weight: 700;
+}
+
+.progress-track {
+  position: relative;
+  overflow: hidden;
+  height: 12rpx;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.progress-fill {
+  position: relative;
+  overflow: hidden;
+  width: 68%;
+  height: 100%;
+  border-radius: 8px;
+  background: linear-gradient(90deg, #ffffff, #ccfbf1);
+}
+
+.progress-fill::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 36%;
+  background: linear-gradient(90deg, transparent, rgba(37, 99, 235, 0.28), transparent);
+  animation: progressSweep 2.4s ease-in-out infinite;
+}
+
+.progress-percent {
+  color: #ffffff;
+  font-size: 28rpx;
+  font-weight: 900;
 }
 
 .metrics {
@@ -196,6 +280,7 @@ const handleQuickAction = (action: string) => {
   box-sizing: border-box;
   text-align: center;
   overflow: hidden;
+  animation: softRise 460ms ease-out both;
 }
 
 .metric-card::after {
@@ -255,11 +340,23 @@ const handleQuickAction = (action: string) => {
 }
 
 .step-item {
+  position: relative;
+  overflow: hidden;
   display: flex;
   gap: 16rpx;
   padding: 18rpx;
   border-radius: 8px;
   background: linear-gradient(135deg, #f8fafc, #eff6ff);
+}
+
+.step-item::after {
+  content: "";
+  position: absolute;
+  left: 45rpx;
+  top: 78rpx;
+  bottom: -10rpx;
+  width: 2rpx;
+  background: linear-gradient(180deg, rgba(37, 99, 235, 0.3), transparent);
 }
 
 .step-index {
@@ -317,6 +414,49 @@ const handleQuickAction = (action: string) => {
   color: #64748b;
   font-size: 22rpx;
   line-height: 1.5;
+}
+
+.focus-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16rpx;
+}
+
+.focus-card {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  min-height: 128rpx;
+  padding: 22rpx 18rpx;
+}
+
+.focus-value {
+  display: grid;
+  place-items: center;
+  flex: 0 0 72rpx;
+  height: 72rpx;
+  border-radius: 8px;
+  color: #ffffff;
+  background: linear-gradient(135deg, #2563eb, #14b8a6);
+  font-size: 27rpx;
+  font-weight: 900;
+}
+
+.focus-copy {
+  flex: 1;
+  display: grid;
+  gap: 4rpx;
+}
+
+.focus-title {
+  color: #111827;
+  font-size: 27rpx;
+  font-weight: 900;
+}
+
+.focus-desc {
+  color: #64748b;
+  font-size: 22rpx;
 }
 
 .recommendation {

@@ -20,16 +20,20 @@ export class ResourceController {
   static async list(req: AuthRequest, res: Response) {
     const { category, keyword } = req.query;
     const where: any = { status: 'published' };
-    if (category) where.category = category;
+    if (category && category !== 'all') where.category = category;
     if (keyword) {
-      where.title = { [Op.like]: `%${keyword}%` };
+      where[Op.or] = [
+        { title: { [Op.like]: `%${keyword}%` } },
+        { description: { [Op.like]: `%${keyword}%` } },
+        { originalName: { [Op.like]: `%${keyword}%` } }
+      ];
     }
 
     const documents = await ResourceDocumentModel.findAll({
       where,
       attributes: { exclude: ['storagePath'] },
-      order: [['createdAt', 'DESC']],
-      limit: 50
+      order: [['updatedAt', 'DESC']],
+      limit: 100
     });
     ok(res, documents);
   }

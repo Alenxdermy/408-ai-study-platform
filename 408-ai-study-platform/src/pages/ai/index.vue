@@ -8,6 +8,8 @@ const question = ref('');
 const answer = ref('');
 const loading = ref(false);
 
+const promptTips = ['选项逐项解析', '考点定位', '易错点提醒'];
+
 const askTeacher = async () => {
   if (!question.value.trim()) {
     uni.showToast({ title: '请输入题目或疑问', icon: 'none' });
@@ -49,6 +51,9 @@ const askTeacher = async () => {
         <text class="card-title">输入题目或知识点</text>
         <text class="muted">建议粘贴完整题干和选项，AI 解析会更稳定。</text>
       </view>
+      <view class="tip-row">
+        <text v-for="tip in promptTips" :key="tip" class="tip-pill">{{ tip }}</text>
+      </view>
       <u-textarea v-model="question" placeholder="粘贴题目，或输入你卡住的知识点" height="180" />
       <u-button type="primary" :loading="loading" text="发送" @click="askTeacher" />
     </view>
@@ -56,6 +61,11 @@ const askTeacher = async () => {
     <view v-if="loading && !answer" class="panel answer waiting">
       <text class="loading-dot"></text>
       <text class="muted">AI 正在整理解析...</text>
+      <view class="typing">
+        <text></text>
+        <text></text>
+        <text></text>
+      </view>
     </view>
 
     <view v-if="answer" class="panel answer">
@@ -111,6 +121,7 @@ const askTeacher = async () => {
   border: 1px solid rgba(255, 255, 255, 0.26);
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.16);
+  animation: softFloat 4s ease-in-out infinite;
 }
 
 .badge-main {
@@ -139,6 +150,21 @@ const askTeacher = async () => {
 .form :deep(.u-textarea) {
   border-radius: 8px;
   box-shadow: inset 0 0 0 1px rgba(226, 232, 240, 0.7);
+}
+
+.tip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
+}
+
+.tip-pill {
+  padding: 8rpx 14rpx;
+  border-radius: 8px;
+  color: #1d4ed8;
+  background: linear-gradient(135deg, #eff6ff, #ecfeff);
+  font-size: 22rpx;
+  font-weight: 800;
 }
 
 .answer {
@@ -174,6 +200,28 @@ const askTeacher = async () => {
   border-radius: 50%;
   background: #2563eb;
   animation: gentlePulse 1.2s ease-in-out infinite;
+}
+
+.typing {
+  display: flex;
+  gap: 7rpx;
+  margin-left: auto;
+}
+
+.typing text {
+  width: 10rpx;
+  height: 10rpx;
+  border-radius: 50%;
+  background: #2563eb;
+  animation: gentlePulse 1.1s ease-in-out infinite;
+}
+
+.typing text:nth-child(2) {
+  animation-delay: 160ms;
+}
+
+.typing text:nth-child(3) {
+  animation-delay: 320ms;
 }
 </style>
 

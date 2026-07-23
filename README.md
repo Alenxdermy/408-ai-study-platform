@@ -1,70 +1,87 @@
 # 408 AI Study Platform
 
-面向 408 计算机考研用户的 UniApp 微信小程序项目。当前项目重点支持：首页学习看板、刷题训练、AI 讲题入口、固定 PDF 真题/答案资料库、个人学习页，以及 Node.js + Express 后端服务。
+面向 408 计算机考研用户的 UniApp 微信小程序项目。当前功能包括：首页学习看板、刷题训练、数据库驱动的 PDF 真题/答案资料库、AI 讲题、个人学习页，以及 Node.js + Express 后端服务。
 
-当前正式项目目录：
+## 1. 当前状态
+
+项目代码目录：
 
 ```text
 E:\python chapter\408\408-ai-study-platform
 ```
 
-固定 PDF 资料目录：
+PDF 文件目录：
 
 ```text
 E:\python chapter\408\docs
-├─ papers-rebuild   # 2009-2025 年真题 PDF，例如 2025.pdf
-└─ answers          # 2009-2025 年答案 PDF，例如 2025-answer.pdf
+├─ papers-rebuild   # 2009-2025 年真题 PDF
+└─ answers          # 2009-2025 年答案 PDF
 ```
 
-## 1. 项目结构
+数据库：
 
 ```text
-408-ai-study-platform
-├─ src                  # UniApp 主源码目录
-│  ├─ pages             # 小程序页面
-│  ├─ services          # 前端请求封装
-│  ├─ stores            # Pinia 状态管理
-│  └─ styles            # 全局样式
-├─ pages                # 兼容 HBuilderX 的页面副本
-├─ services             # 兼容 HBuilderX 的服务副本
-├─ stores               # 兼容 HBuilderX 的状态副本
-├─ styles               # 兼容 HBuilderX 的样式副本
-├─ server               # Node.js + Express 后端
-├─ dist                 # 编译输出目录
-├─ package.json         # 前端和根脚本
-├─ pages.json           # UniApp 页面配置
-├─ manifest.json        # 小程序基础配置
-└─ .env.example         # 环境变量示例
+本地 MySQL
+数据库名：ai_408_study
+PDF 资源表：resource_documents
 ```
 
-说明：当前项目同时保留了根目录页面和 `src` 页面，是为了兼容 HBuilderX 和命令行构建。改页面时建议两处保持同步，后续可以再做一次结构收敛。
-
-## 2. 环境要求
-
-建议使用以下环境：
+当前 PDF 方案：
 
 ```text
-Node.js >= 20
-npm >= 10
-VS Code
-微信开发者工具
-MySQL 8.x 或兼容版本
+PDF 文件本体：保存在 E:\python chapter\408\docs
+PDF 元数据：保存在 MySQL 的 resource_documents 表
+小程序资料页：从后端 /api/resources 读取数据库记录
 ```
 
-当前项目统一使用 `npm`，不要再使用 `pnpm`。
+## 2. 日常运行
 
-检查本机环境：
+日常开发只需要启动后端和小程序前端，不需要每次初始化数据库，也不需要每次同步 PDF。
+
+第一步，启动 MySQL。
+
+第二步，打开一个终端启动后端：
+
+```powershell
+cd "E:\python chapter\408\408-ai-study-platform"
+npm run dev:server
+```
+
+看到类似输出即正常：
+
+```text
+mysql connected
+mysql model synchronization skipped
+server listening on http://localhost:3000
+```
+
+第三步，再打开一个新终端启动微信小程序编译：
+
+```powershell
+cd "E:\python chapter\408\408-ai-study-platform"
+npm run dev:mp-weixin
+```
+
+第四步，打开微信开发者工具，导入这个目录：
+
+```text
+E:\python chapter\408\408-ai-study-platform\dist\dev\mp-weixin
+```
+
+注意：不要导入项目根目录，要导入 `dist\dev\mp-weixin`。
+
+## 3. 首次环境准备
+
+只在第一次使用项目，或换电脑、删除依赖后执行。
+
+检查 Node.js 和 npm：
 
 ```powershell
 node -v
 npm -v
 ```
 
-如果 `npm -v` 报 `Cannot find module ... npm-cli.js`，说明系统 npm 入口损坏，需要先修复 Node.js/npm 后再继续。
-
-## 3. 安装依赖
-
-打开 PowerShell 或 CMD，进入项目根目录：
+进入项目目录：
 
 ```powershell
 cd "E:\python chapter\408\408-ai-study-platform"
@@ -82,43 +99,29 @@ npm install --legacy-peer-deps
 npm --prefix server install --legacy-peer-deps
 ```
 
-使用 `--legacy-peer-deps` 是为了兼容当前 UniApp、Vue3、uView Plus 的依赖版本组合。
+## 4. 环境变量
 
-## 4. 配置环境变量
-
-项目根目录已有示例文件：
-
-```text
-E:\python chapter\408\408-ai-study-platform\.env.example
-```
-
-后端实际读取的文件是：
+后端配置文件位置：
 
 ```text
 E:\python chapter\408\408-ai-study-platform\server\.env
 ```
 
-如果 `server\.env` 不存在，先复制一份：
-
-```powershell
-copy .env.example server\.env
-```
-
-推荐的 `server\.env` 内容如下，按你的本机环境修改数据库密码和 API Key：
+关键配置应类似：
 
 ```env
 NODE_ENV=development
 PORT=3000
 CLIENT_ORIGIN=http://localhost:5173
-VITE_API_BASE_URL=http://localhost:3000/api
 
 DB_HOST=localhost
 DB_PORT=3306
 DB_NAME=ai_408_study
 DB_USER=root
 DB_PASSWORD=你的数据库密码
+DB_SYNC_MODE=none
 
-JWT_SECRET=dev-secret-key-for-408-study-platform
+JWT_SECRET=dev-secret-key-for-408-study-platform-2026
 JWT_EXPIRES_IN=7d
 
 OPENAI_API_KEY=你的OpenAI兼容接口Key
@@ -126,181 +129,172 @@ OPENAI_BASE_URL=https://api.openai.com/v1
 OPENAI_MODEL=gpt-4.1-mini
 OPENAI_EMBEDDING_MODEL=text-embedding-3-small
 
-WECHAT_APP_ID=
-WECHAT_APP_SECRET=
-CHROMA_URL=http://localhost:8000
-CHROMA_COLLECTION=ai_408_knowledge
-
 STATIC_DOCS_DIR=E:\python chapter\408\docs
 UPLOAD_DIR=uploads
 LOG_LEVEL=info
 ```
 
-注意：
+重点：
 
+- `DB_SYNC_MODE` 日常必须保持 `none`。
+- `STATIC_DOCS_DIR` 必须指向 `E:\python chapter\408\docs`。
+- API Key 只写在后端 `.env`，不要写进前端代码。
 - 正确变量名是 `OPENAI_API_KEY`，不是 `OPENEN_API_KEY`。
-- 不要把真实 API Key 写进前端代码。
-- 不要把真实 `.env` 提交到代码仓库。
-- `STATIC_DOCS_DIR` 必须指向真实存在的 `E:\python chapter\408\docs`。
 
-## 5. 初始化数据库
+## 5. 数据库初始化
 
-当前后端启动时会连接数据库，所以需要先保证 MySQL 可用。
+你现在已经初始化过数据库。一般不需要重复执行。
 
-在 MySQL 中创建数据库：
-
-```sql
-CREATE DATABASE ai_408_study DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-```
-
-确认 `server\.env` 中的数据库配置与本机一致：
-
-```env
-DB_HOST=localhost
-DB_PORT=3306
-DB_NAME=ai_408_study
-DB_USER=root
-DB_PASSWORD=你的数据库密码
-```
-
-如果数据库没有启动，后端也会启动失败，PDF 预览接口也无法访问。
-
-## 6. 启动后端服务
-
-在项目根目录运行：
+第一次初始化数据库时运行：
 
 ```powershell
 cd "E:\python chapter\408\408-ai-study-platform"
-npm run dev:server
+npm run db:init
 ```
 
-启动成功后，终端会看到类似输出：
+这个命令会创建：
 
 ```text
-server listening on http://localhost:3000
+ai_408_study
 ```
 
-浏览器访问健康检查：
+并创建项目表。
+
+如果开发阶段数据库坏了，可以重置本项目数据库：
+
+```powershell
+npm run db:reset
+```
+
+警告：`db:reset` 会删除并重建 `ai_408_study`，会清空该库里的数据。日常不要运行。
+
+## 6. PDF 资源同步
+
+你不需要每次运行 `npm run resources:sync`。
+
+只有以下情况才需要运行：
+
+- 第一次把 PDF 写入数据库
+- 新增了 PDF 文件
+- 替换了 PDF 文件
+- 修改了 `E:\python chapter\408\docs` 目录里的文件
+- 执行过 `npm run db:reset`
+
+同步命令：
+
+```powershell
+cd "E:\python chapter\408\408-ai-study-platform"
+npm run resources:sync
+```
+
+该命令会扫描：
+
+```text
+E:\python chapter\408\docs
+```
+
+并把 PDF 元数据写入：
+
+```text
+resource_documents
+```
+
+它不会删除 PDF 文件，也不会把 PDF 二进制塞进数据库。
+
+## 7. 接口测试
+
+后端启动后，浏览器测试健康接口：
 
 ```text
 http://localhost:3000/health
 ```
 
-如果返回 `code: 0` 或健康状态数据，说明后端服务正常。
-
-## 7. 测试 PDF 接口
-
-后端启动后，先在浏览器测试真题 PDF：
+测试 PDF 资源列表：
 
 ```text
-http://localhost:3000/api/resources/static-pdfs/papers-rebuild/2025.pdf/preview
+http://localhost:3000/api/resources
 ```
 
-再测试答案 PDF：
+如果返回资源列表，说明数据库和资料接口正常。
+
+测试单个 PDF：
+
+1. 先从 `/api/resources` 返回结果里复制一个 `id`
+2. 再访问：
 
 ```text
-http://localhost:3000/api/resources/static-pdfs/answers/2025-answer.pdf/preview
+http://localhost:3000/api/resources/资源ID/read
 ```
 
-下载接口示例：
+下载接口：
 
 ```text
-http://localhost:3000/api/resources/static-pdfs/papers-rebuild/2025.pdf/download
+http://localhost:3000/api/resources/资源ID/download
 ```
 
-如果浏览器能打开 PDF，说明后端固定资料接口正常。小程序中预览失败时，优先检查后端是否启动、微信开发者工具是否合法域名校验、以及接口地址是否是手机能访问的地址。
+## 8. 微信开发者工具设置
 
-## 8. 启动微信小程序前端
-
-另开一个 PowerShell 或 CMD，不要关闭后端终端。
-
-```powershell
-cd "E:\python chapter\408\408-ai-study-platform"
-npm run dev:mp-weixin
-```
-
-编译成功后会生成：
-
-```text
-E:\python chapter\408\408-ai-study-platform\dist\dev\mp-weixin
-```
-
-然后打开微信开发者工具，导入这个目录：
-
-```text
-E:\python chapter\408\408-ai-study-platform\dist\dev\mp-weixin
-```
-
-如果微信开发者工具要求填写 AppID，开发阶段可以使用测试号或自己的小程序 AppID。
-
-## 9. 微信开发者工具设置
-
-本地开发阶段建议勾选：
+开发阶段建议勾选：
 
 ```text
 详情 -> 本地设置 -> 不校验合法域名、web-view、TLS 版本以及 HTTPS 证书
 ```
 
-否则本地 `localhost:3000` 接口、PDF 预览和下载可能失败。
+否则本地接口、PDF 预览、PDF 下载可能失败。
 
-如果看到日志通道 WebSocket 报错，但页面和接口能正常使用，通常是开发工具本地调试通道问题，不一定是项目业务错误。
+## 9. 真机调试
 
-## 10. 真机调试
+如果只在电脑微信开发者工具中运行，可以使用：
 
-真机调试时不能使用 `localhost`，因为手机上的 `localhost` 指向手机自己，不是电脑。
+```env
+VITE_API_BASE_URL=http://localhost:3000/api
+```
 
-先查询电脑局域网 IP，例如：
+如果要手机真机预览，不能使用 `localhost`。需要改成电脑局域网 IP。
+
+查看电脑 IP：
 
 ```powershell
 ipconfig
 ```
 
-假设电脑 IP 是 `192.168.1.8`，在项目根目录创建或修改 `.env`：
+假设电脑 IP 是 `192.168.1.8`，项目根目录 `.env` 写：
 
 ```env
 VITE_API_BASE_URL=http://192.168.1.8:3000/api
 ```
 
-然后重新编译小程序：
+然后重新运行：
 
 ```powershell
 npm run dev:mp-weixin
 ```
 
-真机调试还需要确认：
+真机调试还要保证：
 
-- 手机和电脑连接同一个 WiFi。
-- 后端服务正在运行。
-- Windows 防火墙允许 Node.js 访问网络。
-- 微信小程序后台生产环境需要配置合法域名，开发阶段可先使用“不校验合法域名”。
+- 手机和电脑在同一个 WiFi
+- 后端正在运行
+- Windows 防火墙允许 Node.js
+- 微信开发者工具已勾选不校验合法域名
 
-## 11. H5 运行方式
+## 10. 常用命令
 
-如果要在浏览器里调试 H5：
-
-```powershell
-cd "E:\python chapter\408\408-ai-study-platform"
-npm run dev:h5
-```
-
-H5 默认会使用本机后端接口。请同时保持后端运行：
+日常启动后端：
 
 ```powershell
 npm run dev:server
 ```
 
-## 12. 构建命令
+日常启动微信小程序：
+
+```powershell
+npm run dev:mp-weixin
+```
 
 构建微信小程序：
 
 ```powershell
 npm run build:mp-weixin
-```
-
-构建 H5：
-
-```powershell
-npm run build:h5
 ```
 
 构建后端：
@@ -309,153 +303,118 @@ npm run build:h5
 npm run build:server
 ```
 
-运行后端构建产物：
+初始化数据库：
 
 ```powershell
-npm --prefix server run start
+npm run db:init
 ```
 
-## 13. 测试命令
+重置数据库：
 
-运行后端测试：
+```powershell
+npm run db:reset
+```
+
+同步 PDF 资源：
+
+```powershell
+npm run resources:sync
+```
+
+运行测试：
 
 ```powershell
 npm run test
 ```
 
-运行代码检查：
-
-```powershell
-npm run lint
-```
-
-构建检查推荐顺序：
-
-```powershell
-npm run build:mp-weixin
-npm run build:server
-```
-
-## 14. 当前固定 PDF 资料逻辑
-
-PDF 上传功能已经取消。资料页现在固定展示本地资料：
+## 11. 项目结构
 
 ```text
-papers-rebuild: 2009.pdf 到 2025.pdf
-answers: 2009-answer.pdf 到 2025-answer.pdf
+408-ai-study-platform
+├─ src                  # UniApp 主源码目录
+│  ├─ pages             # 小程序页面
+│  ├─ services          # 前端请求封装
+│  ├─ stores            # Pinia 状态管理
+│  └─ styles            # 全局样式
+├─ pages                # 兼容 HBuilderX 的页面副本
+├─ services             # 兼容 HBuilderX 的服务副本
+├─ stores               # 兼容 HBuilderX 的状态副本
+├─ styles               # 兼容 HBuilderX 的样式副本
+├─ server               # Node.js + Express 后端
+├─ dist                 # 编译输出目录
+├─ package.json         # 根脚本
+├─ pages.json           # UniApp 页面配置
+├─ manifest.json        # 小程序基础配置
+└─ .env.example         # 环境变量示例
 ```
 
-小程序资料页支持：
+当前项目同时保留了根目录页面和 `src` 页面，是为了兼容 HBuilderX 和命令行构建。修改页面时两处要保持同步，后续可以再统一收敛。
 
-- 按年份展示真题和答案。
-- 搜索年份、真题、答案。
-- 按全部、真题、答案筛选。
-- 预览 PDF。
-- 下载 PDF。
+## 12. 常见问题
 
-资料文件不需要上传到小程序包内，由后端从 `STATIC_DOCS_DIR` 读取并返回。
+### 小程序打开后还是 Hello 页面
 
-## 15. OPENAI_API_KEY 配置
+原因通常是导入目录错了。
 
-后端统一读取：
+正确导入：
 
 ```text
-OPENAI_API_KEY
+E:\python chapter\408\408-ai-study-platform\dist\dev\mp-weixin
 ```
 
-推荐方式是在 `server\.env` 中配置：
-
-```env
-OPENAI_API_KEY=你的真实Key
-```
-
-也可以设置 Windows 用户变量：
-
-```powershell
-[Environment]::SetEnvironmentVariable("OPENAI_API_KEY", "你的真实Key", "User")
-```
-
-设置用户变量后，需要关闭并重新打开 VS Code、CMD、PowerShell 和后端服务，否则旧终端读不到新变量。
-
-检查用户变量：
-
-```powershell
-[Environment]::GetEnvironmentVariable("OPENAI_API_KEY", "User")
-```
-
-为了安全，前端小程序不应该直接读取或保存 `OPENAI_API_KEY`。所有 AI 调用都应该走后端统一封装服务。
-
-## 16. 常见问题
-
-### 16.1 npm 报 npm-cli.js 找不到
-
-现象：
+不要导入：
 
 ```text
-Cannot find module 'C:\Users\...\AppData\Roaming\npm\node_modules\npm\bin\npm-cli.js'
+E:\python chapter\408\408-ai-study-platform
 ```
 
-处理：
+### 资料页没有 PDF
+
+按顺序检查：
+
+1. 后端是否启动：`npm run dev:server`
+2. 数据库是否有 `ai_408_study`
+3. 浏览器是否能打开：`http://localhost:3000/api/resources`
+4. 是否执行过：`npm run resources:sync`
+5. `STATIC_DOCS_DIR` 是否指向 `E:\python chapter\408\docs`
+
+### PDF 预览失败
+
+按顺序检查：
+
+1. 后端是否启动
+2. 微信开发者工具是否勾选“不校验合法域名”
+3. 真机调试时是否使用电脑局域网 IP
+4. 手机和电脑是否同一 WiFi
+5. Windows 防火墙是否允许 Node.js
+
+### 后端启动失败
+
+优先检查：
+
+- MySQL 是否启动
+- `server\.env` 是否存在
+- `DB_PASSWORD` 是否正确
+- `DB_SYNC_MODE` 是否为 `none`
+- `JWT_SECRET` 是否至少 16 位
+- `STATIC_DOCS_DIR` 是否正确
+
+### npm 报 npm-cli.js 找不到
+
+说明系统 npm 入口损坏。先检查：
 
 ```powershell
 where npm
 npm -v
 ```
 
-正常情况下，`npm` 应该指向 Node.js 安装目录下的 `npm.cmd`，例如：
+正常应该指向 Node.js 安装目录，例如：
 
 ```text
 E:\nodejs\npm.cmd
 ```
 
-如果仍然指向用户目录下损坏的 npm，需要清理错误的用户 npm 入口或重新安装 Node.js。
-
-### 16.2 HBuilderX 提示 node_modules 缺少编译器模块
-
-优先使用 VS Code + 命令行运行：
-
-```powershell
-npm run dev:mp-weixin
-```
-
-如果必须使用 HBuilderX，确认 HBuilderX 内置 npm 目录完整，并且项目根目录已经执行过：
-
-```powershell
-npm install --legacy-peer-deps
-```
-
-### 16.3 小程序打开后还是 Hello 页面
-
-检查微信开发者工具导入的目录是否正确。应该导入编译输出目录：
-
-```text
-E:\python chapter\408\408-ai-study-platform\dist\dev\mp-weixin
-```
-
-不是项目源码根目录，也不是旧的 `exercises` 目录。
-
-### 16.4 PDF 预览打开失败
-
-按顺序检查：
-
-1. 后端是否正在运行：`npm run dev:server`
-2. 浏览器是否能打开 PDF 预览接口。
-3. `server\.env` 中 `STATIC_DOCS_DIR` 是否正确。
-4. 微信开发者工具是否勾选“不校验合法域名”。
-5. 真机调试时 `VITE_API_BASE_URL` 是否改成电脑局域网 IP。
-6. Windows 防火墙是否允许 Node.js。
-
-### 16.5 后端启动失败
-
-优先检查：
-
-- `server\.env` 是否存在。
-- `DB_PASSWORD` 是否正确。
-- MySQL 是否启动。
-- `JWT_SECRET` 长度是否至少 16 位。
-- `STATIC_DOCS_DIR` 是否指向真实 docs 目录。
-
-### 16.6 PowerShell 中文乱码
+### PowerShell 中文乱码
 
 先执行：
 
@@ -465,26 +424,25 @@ chcp 65001
 
 再运行项目命令。
 
-## 17. 推荐开发顺序
+## 13. 推荐开发顺序
 
-每次开发建议按这个顺序启动：
+每次开发建议按这个顺序：
 
-1. 启动 MySQL。
+1. 启动 MySQL
 2. 启动后端：`npm run dev:server`
 3. 浏览器测试：`http://localhost:3000/health`
-4. 浏览器测试 PDF 预览接口。
+4. 浏览器测试：`http://localhost:3000/api/resources`
 5. 启动小程序：`npm run dev:mp-weixin`
 6. 微信开发者工具导入：`dist\dev\mp-weixin`
-7. 测试首页、资料页、PDF 预览和下载。
-8. 再测试 AI 讲题等需要 `OPENAI_API_KEY` 的功能。
+7. 测试首页、资料页、PDF 预览和下载
+8. 再测试 AI 讲题等需要 `OPENAI_API_KEY` 的功能
 
-## 18. 后续开发建议
+## 14. 后续开发建议
 
-下一阶段建议优先做以下工作：
+优先级建议：
 
-- 把根目录页面和 `src` 页面合并为单一源码结构，降低维护成本。
-- 增加 PDF 年份详情页，支持真题、答案、AI 解析联动。
-- 增加题库导入脚本，从 PDF 或结构化文件生成题目数据。
-- 后端增加静态 PDF 接口的数据库解耦，避免数据库异常影响资料预览。
-- 完善 AI 调用统一封装，所有 AI 功能只通过后端服务调用。
-- 增加微信登录、学习记录、错题本和收藏的完整闭环。
+1. 增加 PDF 年份详情页，支持真题、答案、AI 解析联动
+2. 从 PDF 或结构化文件生成题库
+3. 完善错题本、收藏夹、学习记录闭环
+4. 增加微信登录正式配置
+5. 后续上线时迁移到云服务器和对象存储

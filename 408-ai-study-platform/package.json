@@ -10,6 +10,9 @@
     "build:h5": "uni build -p h5",
     "dev:server": "npm --prefix server run dev",
     "build:server": "npm --prefix server run build",
+    "db:init": "npm --prefix server run db:init",
+    "db:reset": "npm --prefix server run db:reset",
+    "resources:sync": "npm --prefix server run resources:sync",
     "seed:questions": "npm --prefix server run seed:questions",
     "lint": "eslint \"**/*.{ts,vue}\" --ignore-pattern \"server/dist/**\" --ignore-pattern \"dist/**\" && npm --prefix server run lint",
     "test": "npm --prefix server run test"

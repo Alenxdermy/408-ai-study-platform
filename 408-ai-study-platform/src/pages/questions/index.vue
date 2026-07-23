@@ -115,6 +115,9 @@ void loadDaily();
         <text class="header-kicker">QUESTION PRACTICE</text>
         <text class="header-title">刷题训练</text>
         <text class="header-desc">每日一练、自动评分、收藏回看，先把薄弱点暴露出来。</text>
+        <view class="header-progress">
+          <view class="header-progress-fill"></view>
+        </view>
       </view>
       <text class="progress">{{ progressText }}</text>
     </view>
@@ -197,6 +200,35 @@ void loadDaily();
   gap: 10rpx;
 }
 
+.header-progress {
+  position: relative;
+  overflow: hidden;
+  width: 88%;
+  height: 10rpx;
+  margin-top: 4rpx;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.header-progress-fill {
+  position: relative;
+  overflow: hidden;
+  width: 58%;
+  height: 100%;
+  border-radius: 8px;
+  background: linear-gradient(90deg, #ffffff, #ccfbf1);
+}
+
+.header-progress-fill::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 42%;
+  background: linear-gradient(90deg, transparent, rgba(37, 99, 235, 0.28), transparent);
+  animation: progressSweep 2.6s ease-in-out infinite;
+}
+
 .header-kicker {
   color: rgba(255, 255, 255, 0.76);
   font-size: 21rpx;
@@ -229,6 +261,7 @@ void loadDaily();
   font-weight: 800;
   line-height: 1.4;
   text-align: center;
+  animation: softFloat 4s ease-in-out infinite;
 }
 
 .mode-strip {
@@ -238,6 +271,8 @@ void loadDaily();
 }
 
 .mode-item {
+  position: relative;
+  overflow: hidden;
   min-height: 112rpx;
   padding: 18rpx 12rpx;
   border: 1px solid rgba(226, 232, 240, 0.94);
@@ -247,9 +282,23 @@ void loadDaily();
   box-sizing: border-box;
 }
 
+.mode-item::after {
+  content: "";
+  position: absolute;
+  left: 14rpx;
+  right: 14rpx;
+  bottom: 0;
+  height: 4rpx;
+  background: #e2e8f0;
+}
+
 .mode-item.active {
   border-color: rgba(37, 99, 235, 0.38);
   background: linear-gradient(135deg, #eff6ff, #ecfeff);
+}
+
+.mode-item.active::after {
+  background: linear-gradient(90deg, #2563eb, #14b8a6);
 }
 
 .mode-title {
@@ -335,6 +384,7 @@ void loadDaily();
   border-color: #2563eb;
   background: linear-gradient(135deg, #eff6ff, #ecfeff);
   box-shadow: 0 12rpx 26rpx rgba(37, 99, 235, 0.10);
+  transform: translateX(4rpx);
 }
 
 .option.disabled {
@@ -381,6 +431,7 @@ void loadDaily();
   border-radius: 8px;
   background: linear-gradient(135deg, rgba(240, 253, 244, 0.95), rgba(255, 251, 235, 0.82));
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.72);
+  animation: softRise 320ms ease-out both;
 }
 
 .result {

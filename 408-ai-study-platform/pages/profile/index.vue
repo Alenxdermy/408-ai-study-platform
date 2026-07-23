@@ -5,6 +5,10 @@ import { useAuthStore } from '../../stores/auth';
 const auth = useAuthStore();
 const nickname = computed(() => String(auth.user?.nickname ?? '408 考生'));
 const loginStatus = computed(() => auth.token ? '已登录' : '未登录');
+const milestoneCards = [
+  { title: '今日状态', value: '待学习' },
+  { title: '资料进度', value: '34份' }
+];
 
 const login = async () => {
   await auth.ensureLogin();
@@ -41,6 +45,13 @@ const login = async () => {
       </view>
     </view>
 
+    <view class="milestone-grid section">
+      <view v-for="item in milestoneCards" :key="item.title" class="milestone-card soft-card">
+        <text class="milestone-title">{{ item.title }}</text>
+        <text class="milestone-value">{{ item.value }}</text>
+      </view>
+    </view>
+
     <view class="panel section">
       <text class="card-title list-title">学习资产</text>
       <u-cell-group>
@@ -70,6 +81,7 @@ const login = async () => {
   border: 1px solid rgba(255, 255, 255, 0.34);
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.18);
+  animation: softFloat 4.2s ease-in-out infinite;
 }
 
 .avatar text {
@@ -146,6 +158,31 @@ const login = async () => {
   margin-top: 8rpx;
   color: #64748b;
   font-size: 24rpx;
+}
+
+.milestone-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16rpx;
+}
+
+.milestone-card {
+  display: grid;
+  gap: 10rpx;
+  min-height: 118rpx;
+  padding: 22rpx 20rpx;
+}
+
+.milestone-title {
+  color: #64748b;
+  font-size: 24rpx;
+  font-weight: 700;
+}
+
+.milestone-value {
+  color: #111827;
+  font-size: 32rpx;
+  font-weight: 900;
 }
 
 .list-title {

@@ -1,27 +1,42 @@
-﻿<script setup lang="ts">
-import { computed, ref } from 'vue';
-import { API_BASE_URL } from '../../services/http';
+<script setup lang="ts">
+import { computed, onMounted, ref, watch } from 'vue';
+import { API_BASE_URL, http } from '../../services/http';
 
-type FixedPdfKind = 'paper' | 'answer';
+type ResourceKind = 'paper' | 'answer';
 
-interface FixedPdfResource {
+interface ResourceDocument {
   id: string;
-  year: string;
-  kind: FixedPdfKind;
   title: string;
   description: string;
-  group: 'papers-rebuild' | 'answers';
+  category: ResourceKind | string;
+  originalName: string;
+  mimeType: string;
+  size: number;
+  viewCount: number;
+  downloadCount: number;
+}
+
+interface PdfResource {
+  id: string;
+  year: string;
+  kind: ResourceKind;
+  title: string;
+  description: string;
   fileName: string;
   size: number;
+  viewCount: number;
+  downloadCount: number;
 }
 
 interface YearResourceGroup {
   year: string;
-  items: FixedPdfResource[];
+  items: PdfResource[];
 }
 
 const keyword = ref('');
 const category = ref('all');
+const loading = ref(false);
+const resources = ref<PdfResource[]>([]);
 
 const categoryOptions = [
   { name: '全部', value: 'all' },
@@ -29,108 +44,87 @@ const categoryOptions = [
   { name: '答案', value: 'answer' }
 ];
 
-const paperSizes: Record<string, number> = {
-  '2009': 863836,
-  '2010': 891051,
-  '2011': 1044010,
-  '2012': 860387,
-  '2013': 1013658,
-  '2014': 925216,
-  '2015': 1093642,
-  '2016': 1024044,
-  '2017': 1153304,
-  '2018': 1838144,
-  '2019': 879667,
-  '2020': 1293589,
-  '2021': 866184,
-  '2022': 1183597,
-  '2023': 853848,
-  '2024': 844959,
-  '2025': 1053731
+const extractYear = (document: ResourceDocument) => {
+  const source = `${document.title} ${document.originalName}`;
+  const matched = source.match(/20\d{2}/);
+  return matched?.[0] ?? '其他';
 };
 
-const answerSizes: Record<string, number> = {
-  '2009': 2174705,
-  '2010': 2212145,
-  '2011': 2502317,
-  '2012': 2339464,
-  '2013': 2070543,
-  '2014': 3007989,
-  '2015': 1617182,
-  '2016': 2374710,
-  '2017': 1897944,
-  '2018': 1732559,
-  '2019': 2793294,
-  '2020': 7242234,
-  '2021': 8133056,
-  '2022': 2065590,
-  '2023': 533731,
-  '2024': 1232336,
-  '2025': 1248632
-};
+const normalizeKind = (categoryName: string): ResourceKind => categoryName === 'answer' ? 'answer' : 'paper';
 
-const years = Object.keys(paperSizes).sort((a, b) => b.localeCompare(a));
-
-const resources: FixedPdfResource[] = years.flatMap(year => [
-  {
-    id: `${year}-paper`,
-    year,
-    kind: 'paper',
-    title: `${year} 年真题`,
-    description: `408 ${year} 年统考真题 PDF`,
-    group: 'papers-rebuild',
-    fileName: `${year}.pdf`,
-    size: paperSizes[year]
-  },
-  {
-    id: `${year}-answer`,
-    year,
-    kind: 'answer',
-    title: `${year} 年答案`,
-    description: `408 ${year} 年真题答案与解析 PDF`,
-    group: 'answers',
-    fileName: `${year}-answer.pdf`,
-    size: answerSizes[year]
-  }
-]);
-
-const filteredYearGroups = computed<YearResourceGroup[]>(() => {
-  const normalizedKeyword = keyword.value.trim().toLowerCase();
-
-  return years
-    .map(year => {
-      const items = resources.filter(item => {
-        const matchKeyword = !normalizedKeyword
-          || item.title.toLowerCase().includes(normalizedKeyword)
-          || item.description.toLowerCase().includes(normalizedKeyword)
-          || item.fileName.toLowerCase().includes(normalizedKeyword)
-          || item.year.includes(normalizedKeyword);
-        const matchCategory = category.value === 'all' || item.kind === category.value;
-        return item.year === year && matchKeyword && matchCategory;
-      });
-
-      return { year, items };
-    })
-    .filter(group => group.items.length > 0);
+const mapResource = (document: ResourceDocument): PdfResource => ({
+  id: document.id,
+  year: extractYear(document),
+  kind: normalizeKind(document.category),
+  title: document.title,
+  description: document.description,
+  fileName: document.originalName,
+  size: document.size,
+  viewCount: document.viewCount,
+  downloadCount: document.downloadCount
 });
 
-const paperCount = computed(() => resources.filter(item => item.kind === 'paper').length);
-const answerCount = computed(() => resources.filter(item => item.kind === 'answer').length);
-const visibleCount = computed(() => filteredYearGroups.value.reduce((total, group) => total + group.items.length, 0));
+const loadResources = async () => {
+  loading.value = true;
+  try {
+    const data = await http.get<ResourceDocument[]>('/resources', {
+      params: {
+        category: category.value,
+        keyword: keyword.value.trim()
+      }
+    });
+    resources.value = data
+      .filter(item => item.mimeType === 'application/pdf' && (item.category === 'paper' || item.category === 'answer'))
+      .map(mapResource)
+      .sort((a, b) => {
+        const yearDiff = b.year.localeCompare(a.year);
+        if (yearDiff !== 0) return yearDiff;
+        return a.kind === 'paper' ? -1 : 1;
+      });
+  } catch (error) {
+    uni.showToast({ title: '资料加载失败', icon: 'none' });
+    console.warn('load resources failed', error);
+  } finally {
+    loading.value = false;
+  }
+};
+
+let searchTimer: ReturnType<typeof setTimeout> | undefined;
+watch([keyword, category], () => {
+  if (searchTimer) clearTimeout(searchTimer);
+  searchTimer = setTimeout(() => {
+    void loadResources();
+  }, 260);
+});
+
+onMounted(() => {
+  void loadResources();
+});
+
+const filteredYearGroups = computed<YearResourceGroup[]>(() => {
+  const years = Array.from(new Set(resources.value.map(item => item.year))).sort((a, b) => b.localeCompare(a));
+  return years.map(year => ({
+    year,
+    items: resources.value.filter(item => item.year === year)
+  }));
+});
+
+const paperCount = computed(() => resources.value.filter(item => item.kind === 'paper').length);
+const answerCount = computed(() => resources.value.filter(item => item.kind === 'answer').length);
+const visibleCount = computed(() => resources.value.length);
 
 const formatSize = (size: number) => {
   if (size < 1024 * 1024) return `${Math.ceil(size / 1024)}KB`;
   return `${(size / 1024 / 1024).toFixed(1)}MB`;
 };
 
-const getTypeLabel = (kind: FixedPdfKind) => kind === 'paper' ? '真题' : '答案';
+const getTypeLabel = (kind: ResourceKind) => kind === 'paper' ? '真题' : '答案';
 
-const getTypeClass = (kind: FixedPdfKind) => kind === 'paper' ? 'paper' : 'answer';
+const getTypeClass = (kind: ResourceKind) => kind === 'paper' ? 'paper' : 'answer';
 
-const buildPdfUrl = (item: FixedPdfResource, action: 'preview' | 'download') => {
-  const group = encodeURIComponent(item.group);
-  const fileName = encodeURIComponent(item.fileName);
-  return `${API_BASE_URL}/resources/static-pdfs/${group}/${fileName}/${action}`;
+const buildPdfUrl = (item: PdfResource, action: 'preview' | 'download') => {
+  const endpoint = action === 'preview' ? 'read' : 'download';
+  return `${API_BASE_URL}/resources/${encodeURIComponent(item.id)}/${endpoint}`;
 };
 
 const getNetworkErrorMessage = (error: UniApp.GeneralCallbackResult) => {
@@ -160,7 +154,7 @@ const openDownloadedPdf = (filePath: string) => {
   });
 };
 
-const openPdf = (item: FixedPdfResource) => {
+const openPdf = (item: PdfResource) => {
   const url = buildPdfUrl(item, 'preview');
 
   // #ifdef H5
@@ -181,6 +175,7 @@ const openPdf = (item: FixedPdfResource) => {
       }
 
       openDownloadedPdf(result.tempFilePath);
+      void loadResources();
     },
     fail: error => {
       uni.hideLoading();
@@ -191,7 +186,7 @@ const openPdf = (item: FixedPdfResource) => {
   // #endif
 };
 
-const downloadPdf = (item: FixedPdfResource) => {
+const downloadPdf = (item: PdfResource) => {
   const url = buildPdfUrl(item, 'download');
 
   // #ifdef H5
@@ -215,6 +210,7 @@ const downloadPdf = (item: FixedPdfResource) => {
         tempFilePath: result.tempFilePath,
         success: saveResult => {
           uni.hideLoading();
+          void loadResources();
           uni.showModal({
             title: '下载完成',
             content: 'PDF 已保存，可在微信文档菜单中打开、转发或收藏。',
@@ -240,6 +236,7 @@ const downloadPdf = (item: FixedPdfResource) => {
   });
   // #endif
 };
+
 const changeCategory = (index: number) => {
   category.value = categoryOptions[index].value;
 };
@@ -251,7 +248,7 @@ const changeCategory = (index: number) => {
       <view class="header-content">
         <text class="header-kicker">PDF LIBRARY</text>
         <text class="page-title">408 真题资料库</text>
-        <text class="page-subtitle">固定收录 2009-2025 年真题与答案，支持预览和下载</text>
+        <text class="page-subtitle">资料来自数据库记录，文件保存在本地资料目录，支持预览和下载</text>
       </view>
       <view class="header-stats">
         <text class="stat-number">{{ visibleCount }}</text>
@@ -283,9 +280,19 @@ const changeCategory = (index: number) => {
       <u-subsection :list="categoryOptions" key-name="name" mode="subsection" @change="changeCategory" />
     </view>
 
-    <view v-if="!filteredYearGroups.length" class="panel empty-state">
+    <view v-if="loading" class="panel empty-state">
+      <text class="empty-title">正在加载资料</text>
+      <text class="muted">正在从数据库读取 PDF 资源记录...</text>
+      <view class="skeleton-list">
+        <text class="skeleton-line wide"></text>
+        <text class="skeleton-line"></text>
+        <text class="skeleton-line short"></text>
+      </view>
+    </view>
+
+    <view v-else-if="!filteredYearGroups.length" class="panel empty-state">
       <text class="empty-title">暂无符合条件的资料</text>
-      <text class="muted">请调整搜索词或资料类型。</text>
+      <text class="muted">请先运行 npm run resources:sync，或调整搜索词和资料类型。</text>
     </view>
 
     <view v-else class="year-list">
@@ -300,11 +307,13 @@ const changeCategory = (index: number) => {
 
         <view class="pdf-list">
           <view v-for="item in group.items" :key="item.id" class="pdf-row">
+            <view class="pdf-status-line" :class="getTypeClass(item.kind)"></view>
             <view class="pdf-main">
               <text class="type-tag" :class="getTypeClass(item.kind)">{{ getTypeLabel(item.kind) }}</text>
               <view class="pdf-text">
                 <text class="pdf-title">{{ item.title }}</text>
                 <text class="pdf-desc">{{ item.description }} · {{ formatSize(item.size) }}</text>
+                <text class="pdf-meta">预览 {{ item.viewCount }} 次 · 下载 {{ item.downloadCount }} 次</text>
               </view>
             </view>
             <view class="pdf-actions">
@@ -363,6 +372,7 @@ const changeCategory = (index: number) => {
   padding: 18rpx 14rpx;
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.18);
+  animation: softFloat 4.2s ease-in-out infinite;
 }
 
 .stat-number {
@@ -394,6 +404,7 @@ const changeCategory = (index: number) => {
   box-shadow: 0 10rpx 26rpx rgba(15, 23, 42, 0.06);
   text-align: center;
   box-sizing: border-box;
+  animation: softRise 440ms ease-out both;
 }
 
 .metric-card::after {
@@ -436,6 +447,24 @@ const changeCategory = (index: number) => {
   gap: 14rpx;
 }
 
+.skeleton-list {
+  display: grid;
+  gap: 14rpx;
+  margin-top: 8rpx;
+}
+
+.skeleton-line.wide {
+  width: 92%;
+}
+
+.skeleton-line {
+  width: 74%;
+}
+
+.skeleton-line.short {
+  width: 48%;
+}
+
 .empty-title {
   color: #111827;
   font-size: 32rpx;
@@ -451,6 +480,14 @@ const changeCategory = (index: number) => {
   display: grid;
   gap: 20rpx;
   animation: softRise 420ms ease-out both;
+}
+
+.year-card:nth-child(2n) {
+  animation-delay: 80ms;
+}
+
+.year-card:nth-child(3n) {
+  animation-delay: 140ms;
 }
 
 .year-header {
@@ -497,14 +534,29 @@ const changeCategory = (index: number) => {
 }
 
 .pdf-row {
+  position: relative;
+  overflow: hidden;
   display: grid;
   gap: 16rpx;
-  padding: 20rpx;
+  padding: 22rpx 20rpx 20rpx;
   border: 1px solid rgba(226, 232, 240, 0.95);
   border-radius: 8px;
   background: linear-gradient(180deg, #ffffff, #f8fafc);
   box-shadow: 0 8rpx 22rpx rgba(15, 23, 42, 0.04);
   transition: transform 160ms ease, border-color 160ms ease;
+}
+
+.pdf-status-line {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 5rpx;
+  background: linear-gradient(90deg, #2563eb, #14b8a6);
+}
+
+.pdf-status-line.answer {
+  background: linear-gradient(90deg, #10b981, #f59e0b);
 }
 
 .pdf-row:active {
@@ -531,10 +583,15 @@ const changeCategory = (index: number) => {
   line-height: 1.45;
 }
 
-.pdf-desc {
+.pdf-desc,
+.pdf-meta {
   color: #64748b;
   font-size: 24rpx;
   line-height: 1.6;
+}
+
+.pdf-meta {
+  color: #94a3b8;
 }
 
 .type-tag {
@@ -558,7 +615,6 @@ const changeCategory = (index: number) => {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 16rpx;
+  padding-top: 2rpx;
 }
-
 </style>
-
