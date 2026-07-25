@@ -175,7 +175,20 @@ page {
 .card-actions :deep(.u-button),
 .form :deep(.u-button),
 .pdf-actions :deep(.u-button) {
+  position: relative;
+  overflow: hidden;
   box-shadow: 0 10rpx 22rpx rgba(37, 99, 235, 0.13);
+  transition: transform 160ms ease, box-shadow 160ms ease, opacity 160ms ease;
+}
+
+.button-row :deep(.u-button:active),
+.actions :deep(.u-button:active),
+.resource-actions :deep(.u-button:active),
+.card-actions :deep(.u-button:active),
+.form :deep(.u-button:active),
+.pdf-actions :deep(.u-button:active) {
+  transform: translateY(1rpx) scale(0.996);
+  box-shadow: 0 6rpx 14rpx rgba(37, 99, 235, 0.12);
 }
 
 .skeleton-line {
@@ -185,6 +198,32 @@ page {
   background: linear-gradient(90deg, #eef2f7, #f8fafc, #eef2f7);
   background-size: 220% 100%;
   animation: skeletonFlow 1.5s ease-in-out infinite;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .soft-card:hover,
+  .metric-card:hover,
+  .mode-item:hover,
+  .pdf-row:hover,
+  .option:hover {
+    transform: translateY(-3rpx);
+    border-color: rgba(37, 99, 235, 0.28);
+    box-shadow: 0 18rpx 38rpx rgba(15, 23, 42, 0.09);
+  }
+}
+
+@media screen and (max-width: 360px) {
+  .page {
+    padding: 24rpx 18rpx 40rpx;
+  }
+
+  .section {
+    margin-bottom: 20rpx;
+  }
+
+  .button-row {
+    gap: 12rpx;
+  }
 }
 
 @keyframes pageGradientFlow {
@@ -276,5 +315,12 @@ page {
   }
   100% {
     transform: translateX(260%);
+  }
+}
+
+@keyframes rippleExpand {
+  to {
+    opacity: 0;
+    transform: scale(2.4);
   }
 }

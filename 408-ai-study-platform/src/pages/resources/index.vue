@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue';
 import { API_BASE_URL, http } from '../../services/http';
+import { useRipple, useScrollReveal } from '../../composables/useMotion';
 
 type ResourceKind = 'paper' | 'answer';
 
@@ -50,7 +51,7 @@ const extractYear = (document: ResourceDocument) => {
   return matched?.[0] ?? '其他';
 };
 
-const normalizeKind = (categoryName: string): ResourceKind => categoryName === 'answer' ? 'answer' : 'paper';
+const normalizeKind = (categoryName: string): ResourceKind => (categoryName === 'answer' ? 'answer' : 'paper');
 
 const mapResource = (document: ResourceDocument): PdfResource => ({
   id: document.id,
@@ -98,6 +99,7 @@ watch([keyword, category], () => {
 });
 
 onMounted(() => {
+  useScrollReveal();
   void loadResources();
 });
 
@@ -118,9 +120,8 @@ const formatSize = (size: number) => {
   return `${(size / 1024 / 1024).toFixed(1)}MB`;
 };
 
-const getTypeLabel = (kind: ResourceKind) => kind === 'paper' ? '真题' : '答案';
-
-const getTypeClass = (kind: ResourceKind) => kind === 'paper' ? 'paper' : 'answer';
+const getTypeLabel = (kind: ResourceKind) => (kind === 'paper' ? '真题' : '答案');
+const getTypeClass = (kind: ResourceKind) => (kind === 'paper' ? 'paper' : 'answer');
 
 const buildPdfUrl = (item: PdfResource, action: 'preview' | 'download') => {
   const endpoint = action === 'preview' ? 'read' : 'download';
@@ -129,7 +130,7 @@ const buildPdfUrl = (item: PdfResource, action: 'preview' | 'download') => {
 
 const getNetworkErrorMessage = (error: UniApp.GeneralCallbackResult) => {
   const errMsg = String(error.errMsg || '');
-  if (errMsg.includes('url not in domain list')) return '请在微信开发者工具中勾选不校验合法域名';
+  if (errMsg.includes('url not in domain list')) return '请在开发者工具中勾选不校验合法域名';
   if (errMsg.includes('fail')) return '请确认后端已启动，且小程序能访问接口地址';
   return 'PDF 打开失败';
 };
@@ -154,7 +155,8 @@ const openDownloadedPdf = (filePath: string) => {
   });
 };
 
-const openPdf = (item: PdfResource) => {
+const openPdf = (item: PdfResource, event?: MouseEvent | TouchEvent) => {
+  if (event) useRipple(event);
   const url = buildPdfUrl(item, 'preview');
 
   // #ifdef H5
@@ -186,7 +188,8 @@ const openPdf = (item: PdfResource) => {
   // #endif
 };
 
-const downloadPdf = (item: PdfResource) => {
+const downloadPdf = (item: PdfResource, event?: MouseEvent | TouchEvent) => {
+  if (event) useRipple(event);
   const url = buildPdfUrl(item, 'download');
 
   // #ifdef H5
@@ -213,7 +216,7 @@ const downloadPdf = (item: PdfResource) => {
           void loadResources();
           uni.showModal({
             title: '下载完成',
-            content: 'PDF 已保存，可在微信文档菜单中打开、转发或收藏。',
+            content: 'PDF 已保存，可在微信文件菜单中打开、转发或收藏。',
             confirmText: '打开',
             cancelText: '知道了',
             success: modal => {
@@ -248,7 +251,7 @@ const changeCategory = (index: number) => {
       <view class="header-content">
         <text class="header-kicker">PDF LIBRARY</text>
         <text class="page-title">408 真题资料库</text>
-        <text class="page-subtitle">资料来自数据库记录，文件保存在本地资料目录，支持预览和下载</text>
+        <text class="page-subtitle">资料来自数据库记录，文件保存在本地资料目录，支持预览和下载。</text>
       </view>
       <view class="header-stats">
         <text class="stat-number">{{ visibleCount }}</text>
@@ -274,7 +277,7 @@ const changeCategory = (index: number) => {
     <view class="panel section filters">
       <view class="filter-head">
         <text class="card-title">资料筛选</text>
-        <text class="muted">点击下方年份可查看对应真题与答案</text>
+        <text class="muted">点击下方年份可查看对应真题与答案。</text>
       </view>
       <u-search v-model="keyword" placeholder="搜索年份、真题、答案" :show-action="false" />
       <u-subsection :list="categoryOptions" key-name="name" mode="subsection" @change="changeCategory" />
@@ -317,8 +320,8 @@ const changeCategory = (index: number) => {
               </view>
             </view>
             <view class="pdf-actions">
-              <u-button size="small" text="预览" @click="openPdf(item)" />
-              <u-button size="small" type="primary" text="下载" @click="downloadPdf(item)" />
+              <u-button size="small" text="预览" @click="openPdf(item, $event)" />
+              <u-button size="small" type="primary" text="下载" @click="downloadPdf(item, $event)" />
             </view>
           </view>
         </view>

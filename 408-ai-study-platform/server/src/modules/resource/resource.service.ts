@@ -43,7 +43,7 @@ export class ResourceService {
       if (!llmService.isConfigured()) {
         await ResourceDocumentModel.update({
           summaryStatus: 'skipped',
-          summaryError: 'OPENAI_API_KEY 未配置，已跳过 AI 摘要生成'
+          summaryError: 'DeepSeek API key 未配置，已跳过 AI 摘要生成'
         }, { where: { id: documentId } });
         return ResourceDocumentModel.findByPk(documentId, { attributes: { exclude: ['storagePath'] } });
       }
@@ -66,7 +66,7 @@ export class ResourceService {
       throw new AppError(404, '资料不存在', 'RESOURCE_NOT_FOUND');
     }
     if (!llmService.isConfigured()) {
-      throw new AppError(500, 'OPENAI_API_KEY 未配置，无法生成 AI 摘要', 'LLM_CONFIG_ERROR');
+      throw new AppError(500, 'DeepSeek API key 未配置，无法生成 AI 摘要', 'LLM_CONFIG_ERROR');
     }
 
     const text = await documentParserService.parseByFileInfo(document.storagePath, document.originalName, document.mimeType);

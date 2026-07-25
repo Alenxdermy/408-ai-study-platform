@@ -1,7 +1,8 @@
-﻿<script setup lang="ts">
-import { computed, ref } from 'vue';
+<script setup lang="ts">
+import { computed, onMounted, ref } from 'vue';
 import { http } from '../../services/http';
 import { useAuthStore } from '../../stores/auth';
+import { useRipple, useScrollReveal } from '../../composables/useMotion';
 
 interface QuestionOption {
   key: string;
@@ -35,7 +36,7 @@ const result = ref<AnswerResult | null>(null);
 const favorited = ref(false);
 
 const currentQuestion = computed(() => questions.value[currentIndex.value]);
-const progressText = computed(() => questions.value.length ? `${currentIndex.value + 1}/${questions.value.length}` : '0/0');
+const progressText = computed(() => (questions.value.length ? `${currentIndex.value + 1}/${questions.value.length}` : '0/0'));
 const canSubmit = computed(() => Boolean(currentQuestion.value && selected.value.length));
 
 const resetAnswerState = () => {
@@ -59,7 +60,8 @@ const loadDaily = async () => {
   }
 };
 
-const chooseOption = (key: string) => {
+const chooseOption = (key: string, event?: MouseEvent | TouchEvent) => {
+  if (event) useRipple(event, 'rgba(37, 99, 235, 0.14)');
   if (result.value || !currentQuestion.value) return;
 
   if (currentQuestion.value.type === 'multiple') {
@@ -72,7 +74,8 @@ const chooseOption = (key: string) => {
   selected.value = [key];
 };
 
-const submitAnswer = async () => {
+const submitAnswer = async (event?: MouseEvent | TouchEvent) => {
+  if (event) useRipple(event);
   if (!currentQuestion.value || !canSubmit.value) return;
 
   submitting.value = true;
@@ -87,25 +90,30 @@ const submitAnswer = async () => {
   }
 };
 
-const toggleFavorite = async () => {
+const toggleFavorite = async (event?: MouseEvent | TouchEvent) => {
+  if (event) useRipple(event, 'rgba(20, 184, 166, 0.16)');
   if (!currentQuestion.value) return;
 
   try {
     const data = await http.post<{ favorited: boolean }>(`/questions/${currentQuestion.value._id}/favorite`);
     favorited.value = data.favorited;
-    uni.showToast({ title: data.favorited ? '已收藏' : '已取消', icon: 'success' });
+    uni.showToast({ title: data.favorited ? '已收藏' : '已取消收藏', icon: 'success' });
   } catch (error) {
     uni.showToast({ title: '收藏失败', icon: 'none' });
     console.warn(error);
   }
 };
 
-const nextQuestion = () => {
+const nextQuestion = (event?: MouseEvent | TouchEvent) => {
+  if (event) useRipple(event);
   currentIndex.value = currentIndex.value < questions.value.length - 1 ? currentIndex.value + 1 : 0;
   resetAnswerState();
 };
 
-void loadDaily();
+onMounted(() => {
+  useScrollReveal();
+  void loadDaily();
+});
 </script>
 
 <template>
@@ -161,7 +169,7 @@ void loadDaily();
         :key="option.key"
         class="option"
         :class="{ selected: selected.includes(option.key), disabled: Boolean(result) }"
-        @click="chooseOption(option.key)"
+        @click="chooseOption(option.key, $event)"
       >
         <text class="option-key">{{ option.key }}</text>
         <text class="option-text">{{ option.content }}</text>
@@ -465,6 +473,4 @@ void loadDaily();
   font-size: 32rpx;
   font-weight: 800;
 }
-
 </style>
-

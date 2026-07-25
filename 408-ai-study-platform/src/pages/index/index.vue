@@ -1,25 +1,56 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { useAuthStore } from '../../stores/auth';
 import { useStudyStore } from '../../stores/study';
+import { useCountUp, useRipple, useScrollReveal } from '../../composables/useMotion';
 
 const auth = useAuthStore();
 const study = useStudyStore();
 const loading = ref(false);
+const checkinLoading = ref(false);
 
-const recentCount = computed(() => study.dashboard.recentRecords?.length ?? 0);
+const recentRecords = computed(() => study.dashboard.recentRecords?.length ?? 0);
+const recentCount = useCountUp(0, 900);
+
+watch(recentRecords, value => {
+  recentCount.run(value);
+}, { immediate: true });
+
 const nickname = computed(() => String(auth.user?.nickname ?? '408 考生'));
+const dashboardUser = computed(() => study.dashboard.user ?? auth.user ?? {});
+const userStats = computed(() => {
+  const stats = (dashboardUser.value as { stats?: { streakDays?: number; lastCheckInAt?: string | null } }).stats;
+  return {
+    streakDays: stats?.streakDays ?? 0,
+    lastCheckInAt: stats?.lastCheckInAt ?? null
+  };
+});
+const targetScore = computed(() => Number((dashboardUser.value as { targetScore?: number }).targetScore ?? 120));
+const examDate = computed(() => String((dashboardUser.value as { examDate?: string | null }).examDate ?? '').slice(0, 10));
+
+const isToday = (value?: string | null) => {
+  if (!value) return false;
+  const date = new Date(value);
+  const today = new Date();
+  return date.getFullYear() === today.getFullYear()
+    && date.getMonth() === today.getMonth()
+    && date.getDate() === today.getDate();
+};
+
+const checkedToday = computed(() => isToday(userStats.value.lastCheckInAt));
+const examLabel = computed(() => examDate.value || '未设置考试日期');
+const checkinText = computed(() => checkedToday.value ? '今日已打卡' : '立即打卡');
 
 const statCards = computed(() => [
   { value: '10', label: '每日一练', tone: 'blue' },
-  { value: '30min', label: '建议学习', tone: 'teal' },
-  { value: String(recentCount.value), label: '近期记录', tone: 'amber' }
+  { value: '30min', label: '建议时长', tone: 'teal' },
+  { value: String(recentCount.current.value), label: '近期记录', tone: 'amber' }
 ]);
 
 const todaySteps = [
-  { title: '基础刷题', desc: '完成今日练习，快速暴露薄弱知识点', index: '01' },
-  { title: '真题阅读', desc: '查看 PDF 真题和答案，建立题感', index: '02' },
-  { title: 'AI 复盘', desc: '把卡住的问题交给 AI 讲题整理', index: '03' }
+  { title: '基础刷题', desc: '先把今天的题目做完，快速暴露薄弱点。', index: '01' },
+  { title: '真题阅读', desc: '浏览 PDF 真题和答案解析，建立题感。', index: '02' },
+  { title: 'AI 复盘', desc: '把卡住的题目交给 AI 整理成知识点。', index: '03' }
 ];
 
 const quickActions = [
@@ -34,6 +65,7 @@ const focusCards = [
 ];
 
 onMounted(async () => {
+  useScrollReveal();
   loading.value = true;
   try {
     await auth.ensureLogin();
@@ -49,7 +81,24 @@ const goQuestions = () => uni.switchTab({ url: '/pages/questions/index' });
 const goResources = () => uni.switchTab({ url: '/pages/resources/index' });
 const goAi = () => uni.switchTab({ url: '/pages/ai/index' });
 
-const handleQuickAction = (action: string) => {
+const handleCheckin = async (event?: MouseEvent | TouchEvent) => {
+  if (event) useRipple(event, 'rgba(255, 255, 255, 0.28)');
+  checkinLoading.value = true;
+  try {
+    await auth.ensureLogin();
+    const result = await study.checkin();
+    await auth.refreshProfile();
+    uni.showToast({ title: result.alreadyCheckedToday ? '今天已经打卡' : '打卡成功', icon: 'success' });
+  } catch (error) {
+    uni.showToast({ title: '打卡失败，请稍后重试', icon: 'none' });
+    console.warn('checkin failed', error);
+  } finally {
+    checkinLoading.value = false;
+  }
+};
+
+const handleQuickAction = (action: string, event?: MouseEvent | TouchEvent) => {
+  if (event) useRipple(event);
   if (action === 'questions') goQuestions();
   if (action === 'resources') goResources();
   if (action === 'ai') goAi();
@@ -62,7 +111,7 @@ const handleQuickAction = (action: string) => {
       <view class="hero-main">
         <text class="hero-kicker">408 AI STUDY</text>
         <text class="hero-title">今天从一个清晰计划开始</text>
-        <text class="hero-subtitle">{{ nickname }}，按“刷题 - 真题 - AI复盘”完成今日学习闭环。</text>
+        <text class="hero-subtitle">{{ nickname }}，按“刷题 - 真题 - AI 复盘”完成今天的学习闭环。</text>
       </view>
       <view class="hero-badge">
         <text class="badge-value">AI</text>
@@ -81,6 +130,22 @@ const handleQuickAction = (action: string) => {
       <view v-for="item in statCards" :key="item.label" class="metric-card" :class="item.tone">
         <text class="metric">{{ item.value }}</text>
         <text class="metric-label">{{ item.label }}</text>
+      </view>
+    </view>
+
+    <view class="checkin-panel panel section">
+      <view class="checkin-copy">
+        <text class="eyebrow">CHECK IN</text>
+        <text class="card-title">今日学习打卡</text>
+        <text class="muted">目标 {{ targetScore }} 分 · {{ examLabel }}</text>
+      </view>
+      <view
+        class="checkin-circle"
+        :class="{ checked: checkedToday, loading: checkinLoading }"
+        @click="handleCheckin($event)"
+      >
+        <text class="checkin-main">{{ checkinText }}</text>
+        <text class="checkin-sub">连续 {{ userStats.streakDays }} 天</text>
       </view>
     </view>
 
@@ -109,7 +174,7 @@ const handleQuickAction = (action: string) => {
         v-for="item in quickActions"
         :key="item.title"
         class="quick-card soft-card"
-        @click="handleQuickAction(item.action)"
+        @click="handleQuickAction(item.action, $event)"
       >
         <text class="quick-title">{{ item.title }}</text>
         <text class="quick-desc">{{ item.desc }}</text>
@@ -128,8 +193,8 @@ const handleQuickAction = (action: string) => {
 
     <view class="panel section recommendation">
       <text class="eyebrow">AI RECOMMEND</text>
-      <text class="card-title">没有题库也能推进</text>
-      <text class="muted">先使用固定真题 PDF 进行阅读和下载，后续再从真题、讲义或章节资料中抽取结构化题库。</text>
+      <text class="card-title">没有题库也能继续推进</text>
+      <text class="muted">先用固定真题 PDF 做阅读和下载，再从题目、讲义和章节资料里逐步补齐结构化题库。</text>
     </view>
 
     <view class="button-row">
@@ -316,6 +381,78 @@ const handleQuickAction = (action: string) => {
   font-size: 24rpx;
 }
 
+.checkin-panel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20rpx;
+}
+
+.checkin-copy {
+  flex: 1;
+  min-width: 0;
+}
+
+.checkin-circle {
+  position: relative;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  flex: 0 0 204rpx;
+  width: 204rpx;
+  height: 204rpx;
+  max-width: 34vw;
+  max-height: 34vw;
+  border-radius: 50%;
+  color: #ffffff;
+  background: radial-gradient(circle at 32% 26%, rgba(255, 255, 255, 0.32), transparent 28%),
+    linear-gradient(135deg, #2563eb, #14b8a6);
+  box-shadow: 0 18rpx 36rpx rgba(37, 99, 235, 0.22);
+  transition: transform 160ms ease, box-shadow 160ms ease, opacity 160ms ease;
+}
+
+.checkin-circle::after {
+  content: "";
+  position: absolute;
+  inset: 12rpx;
+  border: 2rpx solid rgba(255, 255, 255, 0.34);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.checkin-circle:active {
+  transform: scale(0.96);
+}
+
+.checkin-circle.checked {
+  background: radial-gradient(circle at 32% 26%, rgba(255, 255, 255, 0.34), transparent 28%),
+    linear-gradient(135deg, #10b981, #0f766e);
+}
+
+.checkin-circle.loading {
+  opacity: 0.82;
+  animation: gentlePulse 900ms ease-in-out infinite;
+}
+
+.checkin-main {
+  position: relative;
+  z-index: 1;
+  display: block;
+  font-size: 30rpx;
+  font-weight: 900;
+  line-height: 1.2;
+}
+
+.checkin-sub {
+  position: relative;
+  z-index: 1;
+  display: block;
+  margin-top: -34rpx;
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 22rpx;
+  font-weight: 700;
+}
+
 .section-head {
   display: flex;
   align-items: flex-start;
@@ -461,5 +598,21 @@ const handleQuickAction = (action: string) => {
 
 .recommendation {
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(239, 246, 255, 0.96), rgba(240, 253, 250, 0.9));
+}
+
+@media screen and (max-width: 360px) {
+  .checkin-panel {
+    align-items: stretch;
+  }
+
+  .checkin-circle {
+    flex-basis: 176rpx;
+    width: 176rpx;
+    height: 176rpx;
+  }
+
+  .checkin-main {
+    font-size: 26rpx;
+  }
 }
 </style>

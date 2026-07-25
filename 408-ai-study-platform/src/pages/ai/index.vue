@@ -1,7 +1,8 @@
-﻿<script setup lang="ts">
-import { ref } from 'vue';
+<script setup lang="ts">
+import { ref, onMounted } from 'vue';
 import { http } from '../../services/http';
 import { useAuthStore } from '../../stores/auth';
+import { useRipple, useScrollReveal } from '../../composables/useMotion';
 
 const auth = useAuthStore();
 const question = ref('');
@@ -9,8 +10,19 @@ const answer = ref('');
 const loading = ref(false);
 
 const promptTips = ['选项逐项解析', '考点定位', '易错点提醒'];
+const samplePrompts = [
+  '解释这道题的正确答案和依据',
+  '把这道题拆成考点和易错点',
+  '给我一个适合复习的记忆方法'
+];
 
-const askTeacher = async () => {
+const fillPrompt = (text: string, event?: MouseEvent | TouchEvent) => {
+  if (event) useRipple(event, 'rgba(37, 99, 235, 0.12)');
+  question.value = text;
+};
+
+const askTeacher = async (event?: MouseEvent | TouchEvent) => {
+  if (event) useRipple(event);
   if (!question.value.trim()) {
     uni.showToast({ title: '请输入题目或疑问', icon: 'none' });
     return;
@@ -30,6 +42,10 @@ const askTeacher = async () => {
     loading.value = false;
   }
 };
+
+onMounted(() => {
+  useScrollReveal();
+});
 </script>
 
 <template>
@@ -38,7 +54,7 @@ const askTeacher = async () => {
       <view class="hero-copy">
         <text class="hero-kicker">AI TEACHER</text>
         <text class="hero-title">AI 讲题</text>
-        <text class="hero-desc">粘贴 408 题目或输入疑问，按答案、解析、考点、易错点和建议输出。</text>
+        <text class="hero-desc">粘贴 408 题目或输入疑问，按答案、解析、考点和易错点输出。</text>
       </view>
       <view class="teacher-badge">
         <text class="badge-main">24h</text>
@@ -53,6 +69,16 @@ const askTeacher = async () => {
       </view>
       <view class="tip-row">
         <text v-for="tip in promptTips" :key="tip" class="tip-pill">{{ tip }}</text>
+      </view>
+      <view class="prompt-row">
+        <view
+          v-for="item in samplePrompts"
+          :key="item"
+          class="prompt-chip soft-card"
+          @click="fillPrompt(item, $event)"
+        >
+          <text>{{ item }}</text>
+        </view>
       </view>
       <u-textarea v-model="question" placeholder="粘贴题目，或输入你卡住的知识点" height="180" />
       <u-button type="primary" :loading="loading" text="发送" @click="askTeacher" />
@@ -167,6 +193,18 @@ const askTeacher = async () => {
   font-weight: 800;
 }
 
+.prompt-row {
+  display: grid;
+  gap: 12rpx;
+}
+
+.prompt-chip {
+  padding: 18rpx 18rpx;
+  border-radius: 8px;
+  font-size: 24rpx;
+  color: #334155;
+}
+
 .answer {
   display: grid;
   gap: 16rpx;
@@ -224,4 +262,3 @@ const askTeacher = async () => {
   animation-delay: 320ms;
 }
 </style>
-

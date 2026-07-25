@@ -7,6 +7,12 @@ interface DashboardData {
   recentRecords?: Array<Record<string, unknown>>;
 }
 
+interface CheckinResult {
+  user: Record<string, unknown>;
+  checkedToday: boolean;
+  alreadyCheckedToday: boolean;
+}
+
 export const useStudyStore = defineStore('study', () => {
   const dashboard = ref<DashboardData>({});
 
@@ -14,5 +20,14 @@ export const useStudyStore = defineStore('study', () => {
     dashboard.value = await http.get<DashboardData>('/study/dashboard');
   };
 
-  return { dashboard, loadDashboard };
+  const checkin = async () => {
+    const result = await http.post<CheckinResult>('/study/checkin');
+    dashboard.value = {
+      ...dashboard.value,
+      user: result.user
+    };
+    return result;
+  };
+
+  return { dashboard, loadDashboard, checkin };
 });

@@ -1,3 +1,4 @@
+import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import type { SignOptions } from 'jsonwebtoken';
 import { UserModel } from '../../models/user.model.js';
@@ -16,10 +17,69 @@ const signToken = (userId: string) => {
   return jwt.sign({ sub: userId }, env.JWT_SECRET, signOptions);
 };
 
+const sanitizeUser = (user: UserModel) => {
+  const plain = user.get({ plain: true }) as Record<string, unknown>;
+  delete plain.passwordHash;
+  return plain;
+};
+
 export class AuthService {
   static async issueMockUser(nickname?: string) {
     const user = await UserModel.create({ nickname: nickname ?? '408 考生' });
-    return { token: signToken(user.id), user };
+    return { token: signToken(user.id), user: sanitizeUser(user) };
+  }
+
+  static async registerWithPassword(payload: { phone: string; password: string; nickname: string }) {
+    const existingUser = await UserModel.findOne({ where: { phone: payload.phone } });
+    if (existingUser) {
+      throw new AppError(409, '该手机号已经注册', 'PHONE_EXISTS');
+    }
+
+    const passwordHash = await bcrypt.hash(payload.password, 10);
+    const user = await UserModel.create({
+      phone: payload.phone,
+      passwordHash,
+      nickname: payload.nickname
+    });
+
+    return { token: signToken(user.id), user: sanitizeUser(user) };
+  }
+
+  static async loginWithPassword(payload: { phone: string; password: string }) {
+    const user = await UserModel.findOne({ where: { phone: payload.phone } });
+    if (!user || !user.passwordHash) {
+      throw new AppError(401, '账号或密码错误', 'INVALID_CREDENTIALS');
+    }
+
+    const matched = await bcrypt.compare(payload.password, user.passwordHash);
+    if (!matched) {
+      throw new AppError(401, '账号或密码错误', 'INVALID_CREDENTIALS');
+    }
+
+    return { token: signToken(user.id), user: sanitizeUser(user) };
+  }
+
+  static async getCurrentUser(userId: string) {
+    const user = await UserModel.findByPk(userId);
+    if (!user) {
+      throw new AppError(401, '登录状态已失效，请重新登录', 'UNAUTHORIZED');
+    }
+
+    return sanitizeUser(user);
+  }
+
+  static async updateStudyTarget(userId: string, payload: { targetScore: number; examDate: string | null }) {
+    const user = await UserModel.findByPk(userId);
+    if (!user) {
+      throw new AppError(401, '登录状态已失效，请重新登录', 'UNAUTHORIZED');
+    }
+
+    await user.update({
+      targetScore: payload.targetScore,
+      examDate: payload.examDate ? new Date(`${payload.examDate}T00:00:00`) : null
+    });
+
+    return sanitizeUser(user);
   }
 
   static async loginWithWechat(code: string) {
@@ -39,11 +99,11 @@ export class AuthService {
       throw new AppError(401, data.errmsg ?? '微信登录失败', 'WECHAT_LOGIN_FAILED');
     }
 
-    const [user, created] = await UserModel.findOrCreate({
+    const [user] = await UserModel.findOrCreate({
       where: { openId: data.openid },
       defaults: { openId: data.openid, unionId: data.unionid, nickname: '408 考生' }
     });
 
-    return { token: signToken(user.id), user };
+    return { token: signToken(user.id), user: sanitizeUser(user) };
   }
 }
