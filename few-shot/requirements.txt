@@ -1,0 +1,30 @@
+# 408 考研真题智能标注系统 - 依赖包
+
+# ========== 核心依赖 ==========
+torch>=2.0.0
+transformers>=4.30.0
+numpy>=1.24.0
+
+# ========== OCR 依赖 ==========
+# PaddleOCR (推荐)
+paddlepaddle>=2.4.0
+paddleocr>=2.6.0
+
+# 或使用 EasyOCR (备选)
+# easyocr>=1.7.0
+
+# ========== 图像处理 ==========
+Pillow>=9.0.0
+
+# ========== PDF 处理 ==========
+PyMuPDF>=1.24.0
+pypdf>=4.0.0
+pdfplumber>=0.11.0
+
+# ========== 数据库 ==========
+# SQLite 为 Python 标准库，无需额外安装
+
+# ========== 可选：GPU 加速 ==========
+# 如果使用 NVIDIA GPU，可安装对应版本的 CUDA：
+# pip install paddlepaddle-gpu
+# pip install torch --index-url https://download.pytorch.org/whl/cu118

@@ -5,6 +5,7 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import { errorHandler } from '../middlewares/error-handler.js';
 import { aiRouter } from '../modules/ai/ai.routes.js';
+import { adminRouter } from '../modules/admin/admin.routes.js';
 import { authRouter } from '../modules/auth/auth.routes.js';
 import { knowledgeRouter } from '../modules/knowledge/knowledge.routes.js';
 import { questionRouter } from '../modules/question/question.routes.js';
@@ -23,6 +24,7 @@ export const createApp = () => {
 
   app.get('/health', (_req, res) => res.json({ code: 0, message: 'ok', data: { uptime: process.uptime() } }));
   app.use('/api/auth', authRouter);
+  app.use('/api/admin', adminRouter);
   app.use('/api/questions', questionRouter);
   app.use('/api/resources', resourceRouter);
   app.use('/api/ai', aiRouter);

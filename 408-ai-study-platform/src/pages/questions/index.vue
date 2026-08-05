@@ -10,6 +10,7 @@ interface QuestionOption {
 }
 
 interface QuestionItem {
+  id?: string;
   _id: string;
   type: 'single' | 'multiple' | 'judge' | 'blank' | 'essay';
   stem: string;
@@ -19,12 +20,14 @@ interface QuestionItem {
 }
 
 interface AnswerResult {
-  isCorrect: boolean;
+  isCorrect: boolean | null;
   answer: string | string[];
   explanation: string;
   source?: string;
   tags?: string[];
 }
+
+type PracticeMode = 'daily' | 'random' | 'wrong' | 'favorite';
 
 const auth = useAuthStore();
 const questions = ref<QuestionItem[]>([]);
@@ -32,24 +35,61 @@ const loading = ref(false);
 const submitting = ref(false);
 const currentIndex = ref(0);
 const selected = ref<string[]>([]);
+const freeText = ref('');
 const result = ref<AnswerResult | null>(null);
 const favorited = ref(false);
+const currentMode = ref<PracticeMode>('daily');
+
+const modeOptions: Array<{ key: PracticeMode; title: string; desc: string }> = [
+  { key: 'daily', title: '每日一练', desc: '推荐练习' },
+  { key: 'random', title: '随机刷题', desc: '题库抽题' },
+  { key: 'wrong', title: '错题回收', desc: '个人错题本' },
+  { key: 'favorite', title: '我的收藏', desc: '收藏回看' }
+];
 
 const currentQuestion = computed(() => questions.value[currentIndex.value]);
+const currentQuestionId = computed(() => currentQuestion.value?.id || currentQuestion.value?._id || '');
 const progressText = computed(() => (questions.value.length ? `${currentIndex.value + 1}/${questions.value.length}` : '0/0'));
-const canSubmit = computed(() => Boolean(currentQuestion.value && selected.value.length));
+const hasOptions = computed(() => Boolean(currentQuestion.value?.options?.length));
+const emptyMessage = computed(() => {
+  if (currentMode.value === 'wrong') return '当前没有未掌握错题。答错的题会自动进入个人错题本。';
+  if (currentMode.value === 'favorite') return '当前没有收藏题目。刷题时点击收藏后会出现在这里。';
+  return '你还没有结构化题库。先在后台上传 PDF 或导入 JSON 生成题库。';
+});
+const questionTypeText = computed(() => {
+  const type = currentQuestion.value?.type;
+  const labels = {
+    single: '单选题',
+    multiple: '多选题',
+    judge: '判断题',
+    blank: '填空题',
+    essay: '主观题'
+  };
+  return type ? labels[type] : '题目';
+});
+const canSubmit = computed(() => {
+  if (!currentQuestion.value) return false;
+  return hasOptions.value ? selected.value.length > 0 : Boolean(freeText.value.trim());
+});
 
 const resetAnswerState = () => {
   selected.value = [];
+  freeText.value = '';
   result.value = null;
-  favorited.value = false;
+  favorited.value = currentMode.value === 'favorite';
 };
 
-const loadDaily = async () => {
+const loadPractice = async () => {
   loading.value = true;
   try {
     await auth.ensureLogin();
-    questions.value = await http.get<QuestionItem[]>('/questions/daily');
+    const endpointMap: Record<PracticeMode, string> = {
+      daily: '/questions/daily',
+      random: '/questions?mode=random',
+      wrong: '/questions/wrong-book',
+      favorite: '/questions/favorites'
+    };
+    questions.value = await http.get<QuestionItem[]>(endpointMap[currentMode.value]);
     currentIndex.value = 0;
     resetAnswerState();
   } catch (error) {
@@ -60,9 +100,16 @@ const loadDaily = async () => {
   }
 };
 
+const switchMode = (mode: PracticeMode, event?: MouseEvent | TouchEvent) => {
+  if (event) useRipple(event, 'rgba(37, 99, 235, 0.16)');
+  if (currentMode.value === mode) return;
+  currentMode.value = mode;
+  void loadPractice();
+};
+
 const chooseOption = (key: string, event?: MouseEvent | TouchEvent) => {
   if (event) useRipple(event, 'rgba(37, 99, 235, 0.14)');
-  if (result.value || !currentQuestion.value) return;
+  if (result.value || !currentQuestion.value || !hasOptions.value) return;
 
   if (currentQuestion.value.type === 'multiple') {
     selected.value = selected.value.includes(key)
@@ -80,8 +127,10 @@ const submitAnswer = async (event?: MouseEvent | TouchEvent) => {
 
   submitting.value = true;
   try {
-    const answer = currentQuestion.value.type === 'multiple' ? selected.value : selected.value[0];
-    result.value = await http.post<AnswerResult>(`/questions/${currentQuestion.value._id}/answer`, { answer });
+    const answer = hasOptions.value
+      ? (currentQuestion.value.type === 'multiple' ? selected.value : selected.value[0])
+      : freeText.value.trim();
+    result.value = await http.post<AnswerResult>(`/questions/${currentQuestionId.value}/answer`, { answer });
   } catch (error) {
     uni.showToast({ title: '提交失败', icon: 'none' });
     console.warn(error);
@@ -95,7 +144,7 @@ const toggleFavorite = async (event?: MouseEvent | TouchEvent) => {
   if (!currentQuestion.value) return;
 
   try {
-    const data = await http.post<{ favorited: boolean }>(`/questions/${currentQuestion.value._id}/favorite`);
+    const data = await http.post<{ favorited: boolean }>(`/questions/${currentQuestionId.value}/favorite`);
     favorited.value = data.favorited;
     uni.showToast({ title: data.favorited ? '已收藏' : '已取消收藏', icon: 'success' });
   } catch (error) {
@@ -112,7 +161,7 @@ const nextQuestion = (event?: MouseEvent | TouchEvent) => {
 
 onMounted(() => {
   useScrollReveal();
-  void loadDaily();
+  void loadPractice();
 });
 </script>
 
@@ -131,17 +180,15 @@ onMounted(() => {
     </view>
 
     <view class="mode-strip section">
-      <view class="mode-item active">
-        <text class="mode-title">每日一练</text>
-        <text class="mode-desc">当前模式</text>
-      </view>
-      <view class="mode-item">
-        <text class="mode-title">随机刷题</text>
-        <text class="mode-desc">待接入</text>
-      </view>
-      <view class="mode-item">
-        <text class="mode-title">错题回收</text>
-        <text class="mode-desc">待接入</text>
+      <view
+        v-for="mode in modeOptions"
+        :key="mode.key"
+        class="mode-item"
+        :class="{ active: currentMode === mode.key }"
+        @click="switchMode(mode.key, $event)"
+      >
+        <text class="mode-title">{{ mode.title }}</text>
+        <text class="mode-desc">{{ currentMode === mode.key ? '当前模式' : mode.desc }}</text>
       </view>
     </view>
 
@@ -152,13 +199,13 @@ onMounted(() => {
 
     <view v-else-if="!currentQuestion" class="panel empty">
       <text class="empty-title">暂时没有题目</text>
-      <text class="muted">你还没有结构化题库。先阅读固定真题 PDF 和答案解析，后续再从资料中生成题库。</text>
-      <u-button text="重新加载" @click="loadDaily" />
+      <text class="muted">{{ emptyMessage }}</text>
+      <u-button text="重新加载" @click="loadPractice" />
     </view>
 
     <view v-else class="panel section">
       <view class="question-meta">
-        <text class="tag">{{ currentQuestion.type === 'multiple' ? '多选题' : '单选题' }}</text>
+        <text class="tag">{{ questionTypeText }}</text>
         <text class="source">{{ currentQuestion.source || '408 题库' }}</text>
       </view>
 
@@ -175,14 +222,25 @@ onMounted(() => {
         <text class="option-text">{{ option.content }}</text>
       </view>
 
+      <view v-if="!hasOptions" class="free-answer">
+        <u-textarea
+          v-model="freeText"
+          :disabled="Boolean(result)"
+          placeholder="请输入答案"
+          height="180"
+        />
+      </view>
+
       <view class="actions">
         <u-button type="primary" :disabled="!canSubmit || Boolean(result)" :loading="submitting" text="提交答案" @click="submitAnswer" />
         <u-button :text="favorited ? '已收藏' : '收藏'" @click="toggleFavorite" />
       </view>
 
       <view v-if="result" class="analysis">
-        <text class="result" :class="{ wrong: !result.isCorrect }">{{ result.isCorrect ? '回答正确' : '回答错误' }}</text>
-        <text class="muted">正确答案：{{ Array.isArray(result.answer) ? result.answer.join('、') : result.answer }}</text>
+        <text class="result" :class="{ wrong: result.isCorrect === false }">
+          {{ result.isCorrect === null ? '暂无标准答案' : result.isCorrect ? '回答正确' : '回答错误' }}
+        </text>
+        <text class="muted">正确答案：{{ Array.isArray(result.answer) ? result.answer.join('、') : result.answer || '暂无' }}</text>
         <text class="analysis-title">解析</text>
         <text class="analysis-text">{{ result.explanation || '暂无解析' }}</text>
         <u-button text="下一题" @click="nextQuestion" />
@@ -274,7 +332,7 @@ onMounted(() => {
 
 .mode-strip {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: 14rpx;
 }
 
@@ -421,6 +479,10 @@ onMounted(() => {
   color: #334155;
   font-size: 27rpx;
   line-height: 1.65;
+}
+
+.free-answer {
+  margin-top: 10rpx;
 }
 
 .actions {

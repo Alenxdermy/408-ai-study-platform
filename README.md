@@ -446,3 +446,32 @@ chcp 65001
 3. 完善错题本、收藏夹、学习记录闭环
 4. 增加微信登录正式配置
 5. 后续上线时迁移到云服务器和对象存储
+
+## 15. 2025 真题导入
+
+2025 年题目和答案文件：
+
+```text
+E:\python chapter\408\docs\papers-rebuild\2025.pdf
+E:\python chapter\408\docs\answers\2025-answer.pdf
+```
+
+后台导入方式：
+
+1. 启动后端服务
+2. 打开 `http://localhost:5173/#/pages/admin/index`
+3. 点击 `导入 2025 真题`
+
+后台会自动完成：
+
+- 题目提取
+- few-shot 科目分类
+- few-shot 难度划分
+- 标准答案入库
+- 写入 `ai_408_study`
+
+也可以直接调用接口：
+
+```text
+POST /api/admin/questions/import-2025
+```

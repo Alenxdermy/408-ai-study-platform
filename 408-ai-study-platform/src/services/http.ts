@@ -64,5 +64,7 @@ const request = async <T>(
 
 export const http = {
   get: <T = unknown>(url: string, options?: RequestOptions) => request<T>('GET', url, undefined, options),
-  post: <T = unknown>(url: string, data?: unknown) => request<T>('POST', url, data)
+  post: <T = unknown>(url: string, data?: unknown) => request<T>('POST', url, data),
+  put: <T = unknown>(url: string, data?: unknown) => request<T>('PUT', url, data),
+  delete: <T = unknown>(url: string, data?: unknown) => request<T>('DELETE', url, data)
 };

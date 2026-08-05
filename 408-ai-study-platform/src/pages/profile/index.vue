@@ -156,6 +156,10 @@ const signOut = (event?: MouseEvent | TouchEvent) => {
   uni.showToast({ title: '已退出登录', icon: 'success' });
 };
 
+const goAdmin = () => {
+  uni.navigateTo({ url: '/pages/admin/index' });
+};
+
 onMounted(async () => {
   useScrollReveal();
   if (auth.token) {
@@ -266,6 +270,11 @@ onMounted(async () => {
         <u-cell title="错题本" value="0 条" />
         <u-cell title="收藏夹" value="0 条" />
       </u-cell-group>
+      <!-- #ifdef H5 -->
+      <view class="admin-entry">
+        <u-button type="primary" text="打开题库后台" @click="goAdmin" />
+      </view>
+      <!-- #endif -->
     </view>
   </view>
 </template>
@@ -543,6 +552,10 @@ onMounted(async () => {
 .profile-list :deep(.u-cell__value) {
   color: #2563eb;
   font-weight: 700;
+}
+
+.admin-entry {
+  padding-top: 14rpx;
 }
 
 @media screen and (max-width: 360px) {
