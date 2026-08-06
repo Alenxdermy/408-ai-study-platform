@@ -8,6 +8,8 @@
     "build:mp-weixin": "uni build -p mp-weixin",
     "dev:h5": "uni -p h5",
     "build:h5": "uni build -p h5",
+    "dev:admin-web": "vite --config admin-web/vite.config.ts",
+    "build:admin-web": "vite build --config admin-web/vite.config.ts",
     "dev:server": "npm --prefix server run dev",
     "build:server": "npm --prefix server run build",
     "db:init": "npm --prefix server run db:init",

@@ -35,12 +35,6 @@
       "style": {
         "navigationBarTitleText": "我的学习"
       }
-    },
-    {
-      "path": "pages/admin/index",
-      "style": {
-        "navigationBarTitleText": "题库管理"
-      }
     }
   ],
   "globalStyle": {

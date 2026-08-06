@@ -13,11 +13,25 @@ import { resourceRouter } from '../modules/resource/resource.routes.js';
 import { studyRouter } from '../modules/study/study.routes.js';
 import { env } from './env.js';
 
+const clientOrigins = env.CLIENT_ORIGIN.split(',')
+  .map(origin => origin.trim())
+  .filter(Boolean);
+
 export const createApp = () => {
   const app = express();
 
   app.use(helmet());
-  app.use(cors({ origin: env.CLIENT_ORIGIN, credentials: true }));
+  app.use(cors({
+    origin: (origin, callback) => {
+      if (!origin || clientOrigins.includes(origin)) {
+        callback(null, true);
+        return;
+      }
+
+      callback(new Error(`CORS blocked origin: ${origin}`));
+    },
+    credentials: true
+  }));
   app.use(express.json({ limit: '2mb' }));
   app.use(morgan('dev'));
   app.use(rateLimit({ windowMs: 60_000, limit: 120 }));

@@ -34,8 +34,9 @@ const bootstrap = async () => {
 
   const app = createApp();
   const httpServer = createServer(app);
+  const clientOrigins = env.CLIENT_ORIGIN.split(',').map(origin => origin.trim()).filter(Boolean);
   const io = new Server(httpServer, {
-    cors: { origin: env.CLIENT_ORIGIN, credentials: true }
+    cors: { origin: clientOrigins, credentials: true }
   });
 
   io.on('connection', socket => {

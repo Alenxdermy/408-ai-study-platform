@@ -1,6 +1,6 @@
 # 408 AI Study Platform
 
-面向 408 计算机考研用户的 UniApp 微信小程序项目。当前功能包括：首页学习看板、刷题训练、数据库驱动的 PDF 真题/答案资料库、AI 讲题、个人学习页，以及 Node.js + Express 后端服务。
+面向 408 计算机考研用户的 UniApp 微信小程序项目。当前功能包括：首页学习看板、刷题训练、数据库驱动的 PDF 真题/答案资料库、AI 讲题、个人学习页、独立题库后台网页，以及 Node.js + Express 后端服务。
 
 ## 1. 当前状态
 
@@ -36,7 +36,7 @@ PDF 元数据：保存在 MySQL 的 resource_documents 表
 
 ## 2. 日常运行
 
-日常开发只需要启动后端和小程序前端，不需要每次初始化数据库，也不需要每次同步 PDF。
+日常开发只需要启动后端和需要使用的前端，不需要每次初始化数据库，也不需要每次同步 PDF。
 
 第一步，启动 MySQL。
 
@@ -69,6 +69,21 @@ E:\python chapter\408\408-ai-study-platform\dist\dev\mp-weixin
 ```
 
 注意：不要导入项目根目录，要导入 `dist\dev\mp-weixin`。
+
+如果要进入题库后台，再打开一个新终端启动独立后台网页：
+
+```powershell
+cd "E:\python chapter\408\408-ai-study-platform"
+npm run dev:admin-web
+```
+
+浏览器打开：
+
+```text
+http://127.0.0.1:5174
+```
+
+后台网页没有账号密码，直接打开即可使用。它是单独的 Web 页面，不在微信小程序里面。
 
 ## 3. 首次环境准备
 
@@ -112,7 +127,7 @@ E:\python chapter\408\408-ai-study-platform\server\.env
 ```env
 NODE_ENV=development
 PORT=3000
-CLIENT_ORIGIN=http://localhost:5173
+CLIENT_ORIGIN=http://localhost:5173,http://127.0.0.1:5174
 
 DB_HOST=localhost
 DB_PORT=3306
@@ -291,10 +306,22 @@ npm run dev:server
 npm run dev:mp-weixin
 ```
 
+日常启动独立题库后台网页：
+
+```powershell
+npm run dev:admin-web
+```
+
 构建微信小程序：
 
 ```powershell
 npm run build:mp-weixin
+```
+
+构建独立题库后台网页：
+
+```powershell
+npm run build:admin-web
 ```
 
 构建后端：
@@ -340,6 +367,7 @@ npm run test
 ├─ services             # 兼容 HBuilderX 的服务副本
 ├─ stores               # 兼容 HBuilderX 的状态副本
 ├─ styles               # 兼容 HBuilderX 的样式副本
+├─ admin-web            # 独立题库后台网页
 ├─ server               # Node.js + Express 后端
 ├─ dist                 # 编译输出目录
 ├─ package.json         # 根脚本
@@ -456,11 +484,12 @@ E:\python chapter\408\docs\papers-rebuild\2025.pdf
 E:\python chapter\408\docs\answers\2025-answer.pdf
 ```
 
-后台导入方式：
+独立后台网页导入方式：
 
 1. 启动后端服务
-2. 打开 `http://localhost:5173/#/pages/admin/index`
-3. 点击 `导入 2025 真题`
+2. 启动独立后台：`npm run dev:admin-web`
+3. 打开 `http://127.0.0.1:5174`
+4. 点击 `一键导入 2025 真题`
 
 后台会自动完成：
 
@@ -475,3 +504,9 @@ E:\python chapter\408\docs\answers\2025-answer.pdf
 ```text
 POST /api/admin/questions/import-2025
 ```
+
+后台网页还支持：
+
+- 手动新增、编辑、删除题目
+- 粘贴 few-shot 生成的 JSON 并入库
+- 上传 PDF 自动识别，生成 JSON 文本，同时写入 `ai_408_study`
