@@ -1,6 +1,8 @@
 import type { Response } from 'express';
+import { FavoriteModel } from '../../models/favorite.model.js';
 import { StudyRecordModel } from '../../models/study-record.model.js';
 import { UserModel } from '../../models/user.model.js';
+import { WrongBookModel } from '../../models/wrong-book.model.js';
 import type { AuthRequest } from '../../middlewares/auth.js';
 import { ok } from '../../shared/http.js';
 
@@ -22,15 +24,24 @@ const isYesterdayLocal = (left: Date | string | null | undefined, right: Date) =
 
 export class StudyController {
   static async dashboard(req: AuthRequest, res: Response) {
-    const [user, recentRecords] = await Promise.all([
+    const [user, recentRecords, wrongBookCount, favoriteCount] = await Promise.all([
       UserModel.findByPk(req.userId),
       StudyRecordModel.findAll({
         where: { userId: req.userId },
         order: [['createdAt', 'DESC']],
         limit: 30
-      })
+      }),
+      WrongBookModel.count({ where: { userId: req.userId, mastered: false } }),
+      FavoriteModel.count({ where: { userId: req.userId } })
     ]);
-    ok(res, { user, recentRecords });
+    ok(res, {
+      user,
+      recentRecords,
+      studyStats: {
+        wrongBookCount,
+        favoriteCount
+      }
+    });
   }
 
   static async checkin(req: AuthRequest, res: Response) {

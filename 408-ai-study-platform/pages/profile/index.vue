@@ -1,10 +1,15 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, onMounted } from 'vue';
+import { onShow } from '@dcloudio/uni-app';
 import { useAuthStore } from '../../stores/auth';
+import { useStudyStore } from '../../stores/study';
 
 const auth = useAuthStore();
+const study = useStudyStore();
 const nickname = computed(() => String(auth.user?.nickname ?? '408 考生'));
 const loginStatus = computed(() => auth.token ? '已登录' : '未登录');
+const wrongBookCount = computed(() => study.dashboard.studyStats?.wrongBookCount ?? 0);
+const favoriteCount = computed(() => study.dashboard.studyStats?.favoriteCount ?? 0);
 const milestoneCards = [
   { title: '今日状态', value: '待学习' },
   { title: '资料进度', value: '34份' }
@@ -12,8 +17,21 @@ const milestoneCards = [
 
 const login = async () => {
   await auth.ensureLogin();
+  await study.loadDashboard();
   uni.showToast({ title: '登录成功', icon: 'success' });
 };
+
+const refreshDashboard = async () => {
+  if (auth.token) await study.loadDashboard();
+};
+
+onMounted(async () => {
+  await refreshDashboard();
+});
+
+onShow(() => {
+  void refreshDashboard();
+});
 </script>
 
 <template>
@@ -32,11 +50,11 @@ const login = async () => {
 
     <view class="summary-grid section">
       <view class="summary-card soft-card">
-        <text class="summary-value">0</text>
+        <text class="summary-value">{{ wrongBookCount }}</text>
         <text class="summary-label">错题</text>
       </view>
       <view class="summary-card soft-card">
-        <text class="summary-value">0</text>
+        <text class="summary-value">{{ favoriteCount }}</text>
         <text class="summary-label">收藏</text>
       </view>
       <view class="summary-card soft-card">
@@ -56,8 +74,8 @@ const login = async () => {
       <text class="card-title list-title">学习资产</text>
       <u-cell-group>
         <u-cell title="学习报告" value="待生成" />
-        <u-cell title="错题本" value="0 题" />
-        <u-cell title="收藏夹" value="0 题" />
+        <u-cell title="错题本" :value="`${wrongBookCount} 题`" />
+        <u-cell title="收藏夹" :value="`${favoriteCount} 题`" />
       </u-cell-group>
     </view>
   </view>

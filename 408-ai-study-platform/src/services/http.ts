@@ -12,6 +12,7 @@ interface ApiResponse<T> {
 
 interface RequestOptions {
   params?: Record<string, string | number | boolean | undefined>;
+  timeout?: number;
 }
 
 const buildUrl = (url: string, params?: RequestOptions['params']) => {
@@ -39,7 +40,7 @@ const request = async <T>(
     url: buildUrl(url, options?.params),
     method,
     data,
-    timeout: 20000,
+    timeout: options?.timeout ?? 20000,
     header: {
       'Content-Type': 'application/json',
       ...(token ? { Authorization: `Bearer ${token}` } : {})
@@ -64,7 +65,7 @@ const request = async <T>(
 
 export const http = {
   get: <T = unknown>(url: string, options?: RequestOptions) => request<T>('GET', url, undefined, options),
-  post: <T = unknown>(url: string, data?: unknown) => request<T>('POST', url, data),
-  put: <T = unknown>(url: string, data?: unknown) => request<T>('PUT', url, data),
-  delete: <T = unknown>(url: string, data?: unknown) => request<T>('DELETE', url, data)
+  post: <T = unknown>(url: string, data?: unknown, options?: RequestOptions) => request<T>('POST', url, data, options),
+  put: <T = unknown>(url: string, data?: unknown, options?: RequestOptions) => request<T>('PUT', url, data, options),
+  delete: <T = unknown>(url: string, data?: unknown, options?: RequestOptions) => request<T>('DELETE', url, data, options)
 };

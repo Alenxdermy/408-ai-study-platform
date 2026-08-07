@@ -33,10 +33,10 @@ const askTeacher = async (event?: MouseEvent | TouchEvent) => {
     await auth.ensureLogin();
     const result = await http.post<{ content: string }>('/ai/agent/teacher', {
       payload: { question: question.value }
-    });
+    }, { timeout: 90000 });
     answer.value = result.content;
   } catch (error) {
-    uni.showToast({ title: 'AI 服务暂不可用', icon: 'none' });
+    uni.showToast({ title: (error as Error).message || 'AI 服务暂不可用', icon: 'none' });
     console.warn(error);
   } finally {
     loading.value = false;

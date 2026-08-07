@@ -5,6 +5,10 @@ import { http } from '../services/http';
 interface DashboardData {
   user?: Record<string, unknown>;
   recentRecords?: Array<Record<string, unknown>>;
+  studyStats?: {
+    wrongBookCount: number;
+    favoriteCount: number;
+  };
 }
 
 interface CheckinResult {

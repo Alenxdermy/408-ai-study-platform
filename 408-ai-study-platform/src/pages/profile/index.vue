@@ -1,11 +1,14 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue';
+import { onShow } from '@dcloudio/uni-app';
 import { useAuthStore } from '../../stores/auth';
+import { useStudyStore } from '../../stores/study';
 import { useCountUp, useRipple, useScrollReveal } from '../../composables/useMotion';
 
 type AuthMode = 'login' | 'register';
 
 const auth = useAuthStore();
+const study = useStudyStore();
 const mode = ref<AuthMode>('login');
 const submitting = ref(false);
 const savingTarget = ref(false);
@@ -59,6 +62,8 @@ const loginStatus = computed(() => auth.isLoggedIn ? '已登录' : '未登录');
 const targetScore = computed(() => auth.user?.targetScore ?? 120);
 const examDate = computed(() => auth.user?.examDate ? String(auth.user?.examDate).slice(0, 10) : '未设置');
 const streakDays = computed(() => auth.user?.stats?.streakDays ?? 0);
+const wrongBookCount = computed(() => study.dashboard.studyStats?.wrongBookCount ?? 0);
+const favoriteCount = computed(() => study.dashboard.studyStats?.favoriteCount ?? 0);
 
 const milestoneCards = computed(() => [
   { title: '目标分数', value: `${targetScore.value}` },
@@ -156,11 +161,19 @@ const signOut = (event?: MouseEvent | TouchEvent) => {
   uni.showToast({ title: '已退出登录', icon: 'success' });
 };
 
+const refreshDashboard = async () => {
+  if (!auth.token) return;
+  const valid = await auth.ensureSession();
+  if (valid) await study.loadDashboard();
+};
+
 onMounted(async () => {
   useScrollReveal();
-  if (auth.token) {
-    await auth.ensureSession();
-  }
+  await refreshDashboard();
+});
+
+onShow(() => {
+  void refreshDashboard();
 });
 </script>
 
@@ -263,8 +276,8 @@ onMounted(async () => {
       <text class="card-title list-title">学习资源</text>
       <u-cell-group>
         <u-cell title="学习报告" value="待生成" />
-        <u-cell title="错题本" value="0 条" />
-        <u-cell title="收藏夹" value="0 条" />
+        <u-cell title="错题本" :value="`${wrongBookCount} 条`" />
+        <u-cell title="收藏夹" :value="`${favoriteCount} 条`" />
       </u-cell-group>
     </view>
   </view>

@@ -37,9 +37,9 @@ const pickProxy = () => env.HTTPS_PROXY ?? env.HTTP_PROXY ?? '';
 
 const normalizeBaseUrl = (value: string) => value.replace(/\/+$/, '');
 
-const createAgent = (targetUrl: URL) => {
+const createAgent = (targetUrl: URL, useProxy = true) => {
   const proxyUrl = pickProxy();
-  if (!proxyUrl) return undefined;
+  if (!proxyUrl || !useProxy) return undefined;
   if (targetUrl.protocol === 'https:') {
     return HttpsProxyAgent(proxyUrl);
   }
@@ -81,10 +81,11 @@ class OpenAICompatibleClient {
   async postJson<T>(path: string, body: Record<string, unknown>): Promise<T> {
     const url = new URL(path, this.baseUrl);
     const payload = JSON.stringify(body);
-    const agent = createAgent(url);
+    const proxyUrl = pickProxy();
     const transport = url.protocol === 'https:' ? https : http;
 
-    return new Promise<T>((resolve, reject) => {
+    const send = (useProxy: boolean) => new Promise<T>((resolve, reject) => {
+      const agent = createAgent(url, useProxy);
       const request = transport.request(url, {
         method: 'POST',
         headers: {
@@ -120,6 +121,18 @@ class OpenAICompatibleClient {
       request.write(payload);
       request.end();
     });
+
+    try {
+      return await send(Boolean(proxyUrl));
+    } catch (error: any) {
+      const canRetryWithoutProxy = Boolean(proxyUrl)
+        && ['ECONNREFUSED', 'ECONNRESET', 'ETIMEDOUT', 'ENOTFOUND'].includes(String(error?.code ?? ''));
+
+      if (!canRetryWithoutProxy) throw error;
+
+      console.warn(`Configured proxy ${proxyUrl} is unavailable, retrying AI request without proxy.`, error);
+      return send(false);
+    }
   }
 }
 
@@ -195,8 +208,7 @@ export class LLMService {
       messages,
       temperature: 0.2,
       stream: false,
-      thinking: { type: 'enabled' },
-      reasoning_effort: 'high'
+      max_tokens: 1200
     });
 
     const message = response.choices?.[0]?.message;
