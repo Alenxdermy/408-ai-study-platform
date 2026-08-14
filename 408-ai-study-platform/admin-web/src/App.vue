@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue';
 import { api, API_BASE_URL, type QuestionItem } from './api';
 
@@ -37,6 +37,7 @@ const filterSubject = ref('');
 const filterYear = ref('');
 const importText = ref('');
 const importResultJson = ref('');
+const importStatus = ref('');
 const pdfFile = ref<File | null>(null);
 const pdfYear = ref('');
 const list = ref<QuestionItem[]>([]);
@@ -191,6 +192,7 @@ const importJson = async () => {
   }
 
   importing.value = true;
+  importStatus.value = 'Uploading PDF...';
   try {
     const result = await api.importJson(importText.value);
     importResultJson.value = JSON.stringify(result.items ?? [], null, 2);
@@ -208,6 +210,19 @@ const selectPdf = (event: Event) => {
   pdfFile.value = (event.target as HTMLInputElement).files?.[0] ?? null;
 };
 
+const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+const waitImportJob = async (jobId: string) => {
+  while (true) {
+    await wait(2000);
+    const job = await api.getImportJob(jobId);
+    importStatus.value = `${job.stage}（状态：${job.status}）`;
+
+    if (job.status === 'succeeded') return job;
+    if (job.status === 'failed') throw new Error(job.error || 'PDF 识别失败');
+  }
+};
+
 const importPdf = async () => {
   if (!pdfFile.value) {
     showError('请先选择 PDF 文件');
@@ -215,19 +230,25 @@ const importPdf = async () => {
   }
 
   importing.value = true;
+  importStatus.value = '正在上传 PDF，请稍候...';
   try {
     const data = new FormData();
     data.append('file', pdfFile.value);
-    if (pdfYear.value.trim()) data.append('year', pdfYear.value.trim());
+    const yearText = String(pdfYear.value ?? '').trim();
+    if (yearText) data.append('year', yearText);
 
-    const result = await api.importPdf(data);
+    const job = await api.importPdfJob(data);
+    importStatus.value = `${job.stage}（任务号：${job.id}）`;
+    const done = await waitImportJob(job.id);
+    const result = done.result ?? { created: 0, updated: 0, skipped: 0, total: 0, items: [] };
     importResultJson.value = JSON.stringify(result.items ?? [], null, 2);
-    showMessage(`PDF 识别并入库完成：共 ${result.total} 题`);
+    showMessage(`PDF 识别完成：新增 ${result.created}，更新 ${result.updated}，跳过 ${result.skipped}，候选 ${result.total}`);
     await refreshAll();
   } catch (err) {
     showError((err as Error).message);
   } finally {
     importing.value = false;
+    importStatus.value = '';
   }
 };
 
@@ -334,6 +355,7 @@ onMounted(() => {
             <button class="primary" type="button" :disabled="importing" @click="importPdf">识别 PDF</button>
           </div>
           <p class="muted">{{ pdfFileName }}</p>
+          <p v-if="importStatus" class="notice info">{{ importStatus }}</p>
           <button class="ghost full" type="button" :disabled="importing" @click="import2025">一键导入 2025 真题</button>
           <label>粘贴 JSON 导入
             <textarea v-model="importText" rows="8" placeholder="粘贴 few-shot 生成的 JSON"></textarea>
@@ -388,3 +410,4 @@ onMounted(() => {
     </section>
   </main>
 </template>
+

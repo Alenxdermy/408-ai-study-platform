@@ -24,4 +24,6 @@ adminRouter.put('/questions/:id', asyncHandler(AdminQuestionController.update));
 adminRouter.delete('/questions/:id', asyncHandler(AdminQuestionController.remove));
 adminRouter.post('/questions/import', asyncHandler(AdminQuestionController.importQuestions));
 adminRouter.post('/questions/import-2025', asyncHandler(AdminQuestionController.import2025));
+adminRouter.post('/questions/import-pdf-job', upload.single('file'), asyncHandler(AdminQuestionController.createPdfImportJob));
+adminRouter.get('/questions/import-jobs/:id', asyncHandler(AdminQuestionController.getImportJob));
 adminRouter.post('/questions/import-pdf', upload.single('file'), asyncHandler(AdminQuestionController.importPdf));

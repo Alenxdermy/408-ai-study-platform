@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { computed, ref, onMounted } from 'vue';
 import { http } from '../../services/http';
 import { useAuthStore } from '../../stores/auth';
 import { useRipple, useScrollReveal } from '../../composables/useMotion';
@@ -8,6 +8,46 @@ const auth = useAuthStore();
 const question = ref('');
 const answer = ref('');
 const loading = ref(false);
+
+const escapeHtml = (value: string) => value
+  .replace(/&/g, '&amp;')
+  .replace(/</g, '&lt;')
+  .replace(/>/g, '&gt;')
+  .replace(/"/g, '&quot;')
+  .replace(/'/g, '&#39;');
+
+const normalizeMathText = (value: string) => value
+  .replace(/\\\[(.*?)\\\]/gs, '$1')
+  .replace(/\\\((.*?)\\\)/gs, '$1')
+  .replace(/\\frac\{([^{}]+)\}\{([^{}]+)\}/g, '($1)/($2)')
+  .replace(/\\log/g, 'log')
+  .replace(/\\cdot/g, '·')
+  .replace(/\\times/g, '×')
+  .replace(/\\leq/g, '≤')
+  .replace(/\\geq/g, '≥')
+  .replace(/\\n/g, '\n');
+
+const renderedAnswer = computed(() => {
+  const text = escapeHtml(normalizeMathText(answer.value)).replace(/\r\n/g, '\n');
+  const inline = text
+    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+    .replace(/`([^`]+)`/g, '<code>$1</code>');
+
+  return inline
+    .split('\n')
+    .map(line => line.trim())
+    .filter(Boolean)
+    .map(line => {
+      const title = line.match(/^#{1,6}\s+(.+)$/);
+      if (title) return `<h3>${title[1]}</h3>`;
+      const numbered = line.match(/^(\d+)[.、]\s*(.+)$/);
+      if (numbered) return `<p><strong>${numbered[1]}. </strong>${numbered[2]}</p>`;
+      const bullet = line.match(/^[-*]\s*(.+)$/);
+      if (bullet) return `<p>• ${bullet[1]}</p>`;
+      return `<p>${line}</p>`;
+    })
+    .join('');
+});
 
 const promptTips = ['选项逐项解析', '考点定位', '易错点提醒'];
 const samplePrompts = [
@@ -33,7 +73,7 @@ const askTeacher = async (event?: MouseEvent | TouchEvent) => {
     await auth.ensureLogin();
     const result = await http.post<{ content: string }>('/ai/agent/teacher', {
       payload: { question: question.value }
-    }, { timeout: 90000 });
+    });
     answer.value = result.content;
   } catch (error) {
     uni.showToast({ title: (error as Error).message || 'AI 服务暂不可用', icon: 'none' });
@@ -96,7 +136,7 @@ onMounted(() => {
 
     <view v-if="answer" class="panel answer">
       <text class="answer-title">解析结果</text>
-      <text>{{ answer }}</text>
+      <rich-text class="answer-content" :nodes="renderedAnswer" />
     </view>
   </view>
 </template>
@@ -222,8 +262,14 @@ onMounted(() => {
   line-height: 1.35;
 }
 
-.answer text {
+.answer text,
+.answer-content {
   font-size: 28rpx;
+}
+
+.answer-content {
+  display: block;
+  line-height: 1.75;
 }
 
 .waiting {

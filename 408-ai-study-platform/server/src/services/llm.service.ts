@@ -74,8 +74,7 @@ const localEmbedding = (text: string, dimensions = LOCAL_EMBEDDING_DIMENSION) =>
 class OpenAICompatibleClient {
   constructor(
     private readonly baseUrl: string,
-    private readonly apiKey: string,
-    private readonly timeoutMs = 60000
+    private readonly apiKey: string
   ) {}
 
   async postJson<T>(path: string, body: Record<string, unknown>): Promise<T> {
@@ -94,8 +93,7 @@ class OpenAICompatibleClient {
           Accept: 'application/json',
           'Content-Length': Buffer.byteLength(payload)
         },
-        agent: agent as unknown as http.Agent | undefined,
-        timeout: this.timeoutMs
+        agent: agent as unknown as http.Agent | undefined
       }, async response => {
         const text = await readBody(response);
         let parsed: Record<string, unknown> | null = null;
@@ -145,7 +143,7 @@ class DeepSeekEmbeddings implements EmbeddingProvider {
     apiKey: string,
     private readonly model: string
   ) {
-    this.client = new OpenAICompatibleClient(baseUrl, apiKey, 60000);
+    this.client = new OpenAICompatibleClient(baseUrl, apiKey);
   }
 
   async embedDocuments(texts: string[]) {
@@ -188,7 +186,7 @@ export class LLMService {
 
   private get client() {
     if (!this.chatClient) {
-      this.chatClient = new OpenAICompatibleClient(this.baseUrl, this.apiKey, 60000);
+      this.chatClient = new OpenAICompatibleClient(this.baseUrl, this.apiKey);
     }
     return this.chatClient;
   }
@@ -207,6 +205,8 @@ export class LLMService {
       model: env.OPENAI_MODEL,
       messages,
       temperature: 0.2,
+      thinking: { type: 'enabled' },
+      reasoning_effort: 'high',
       stream: false,
       max_tokens: 1200
     });

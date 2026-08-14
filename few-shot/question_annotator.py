@@ -15,6 +15,10 @@
 import re
 import json
 import difflib
+import os
+import subprocess
+import urllib.error
+import urllib.request
 from collections import defaultdict
 
 from few_shot_examples import (
@@ -24,6 +28,20 @@ from few_shot_examples import (
     DIFFICULTY_RULES,
     format_prompt
 )
+
+
+def _load_local_env():
+    """读取项目本地 .env，避免直接运行 few-shot 时拿不到后端配置。"""
+    env_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "408-ai-study-platform", "server", ".env")
+    if not os.path.exists(env_path):
+        return
+    with open(env_path, "r", encoding="utf-8") as file:
+        for raw_line in file:
+            line = raw_line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            key, value = line.split("=", 1)
+            os.environ.setdefault(key.strip(), value.strip())
 
 
 class QuestionAnnotator:
@@ -36,18 +54,23 @@ class QuestionAnnotator:
     # 题型列表
     QUESTION_TYPES = ["单选题", "综合应用题"]
 
-    def __init__(self, mode="hybrid"):
+    def __init__(self, mode="llm"):
         """
         初始化标注器
         :param mode: 标注模式
             - "rule": 仅使用规则匹配
             - "similarity": 仅使用相似度匹配
             - "hybrid": 混合模式（推荐），先用规则再用相似度验证
+            - "llm": 优先使用 DeepSeek 大模型，失败时回退到 hybrid
         """
         self.mode = mode
+        _load_local_env()
         self.examples = FEW_SHOT_EXAMPLES
         self.keyword_map = SUBJECT_KEYWORDS
         self.difficulty_rules = DIFFICULTY_RULES
+        self.api_key = os.getenv("DEEPSEEK_API_KEY") or os.getenv("OPENAI_API_KEY") or ""
+        self.api_base_url = (os.getenv("DEEPSEEK_BASE_URL") or os.getenv("OPENAI_BASE_URL") or "https://api.deepseek.com").rstrip("/")
+        self.api_model = os.getenv("DEEPSEEK_MODEL") or os.getenv("OPENAI_MODEL") or "deepseek-v4-pro"
 
         # 按科目分组示例（用于相似度匹配）
         self._examples_by_subject = defaultdict(list)
@@ -66,23 +89,11 @@ class QuestionAnnotator:
         :param question_text: 题目文本
         :return: JSON 格式的标注结果
         """
-        # 1. 识别题型
-        q_type = self._detect_question_type(question_text)
-
-        # 2. 科目分类
-        subject = self._classify_subject(question_text)
-
-        # 3. 难度评级
-        difficulty = self._classify_difficulty(question_text)
-
-        # 4. 生成答案
-        answer = self._generate_answer(question_text, q_type)
-
-        # 5. 构建结果
+        detail = self.annotate_detailed(question_text)
         result = {
-            "subject": subject,
-            "difficulty": difficulty,
-            "answer": answer
+            "subject": detail["subject"],
+            "difficulty": detail["difficulty"],
+            "answer": detail["answer"]
         }
 
         return json.dumps(result, ensure_ascii=False)
@@ -101,7 +112,7 @@ class QuestionAnnotator:
         # 相似度匹配结果
         sim_result = self._find_most_similar(question_text)
 
-        return {
+        result = {
             "subject": subject,
             "difficulty": difficulty,
             "question_type": q_type,
@@ -116,6 +127,19 @@ class QuestionAnnotator:
             }, ensure_ascii=False)
         }
 
+        if self.mode == "llm":
+            llm_result = self._annotate_with_llm(question_text)
+            if llm_result:
+                result.update(llm_result)
+                result["json_output"] = json.dumps({
+                    "subject": result["subject"],
+                    "difficulty": result["difficulty"],
+                    "answer": result["answer"]
+                }, ensure_ascii=False)
+                result["difficulty_reason"] = "DeepSeek few-shot 标注"
+
+        return result
+
     def build_prompt(self, question_text):
         """
         构建 Few-Shot Prompt（供大语言模型使用）
@@ -123,6 +147,115 @@ class QuestionAnnotator:
         :return: 完整的 Few-Shot Prompt
         """
         return format_prompt(question_text)
+
+    def _annotate_with_llm(self, question_text):
+        """调用 DeepSeek/OpenAI 兼容接口进行 few-shot 标注，失败时返回 None。"""
+        if not self.api_key:
+            return None
+
+        payload = {
+            "model": self.api_model,
+            "messages": [
+                {
+                    "role": "system",
+                    "content": "你只返回纯 JSON，不要输出 Markdown、解释或代码块。"
+                },
+                {
+                    "role": "user",
+                    "content": self.build_prompt(question_text)
+                }
+            ],
+            "temperature": 0.1,
+            "max_tokens": 500,
+            "thinking": {"type": "enabled"},
+            "reasoning_effort": "high",
+            "stream": False
+        }
+        data = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+        request = urllib.request.Request(
+            f"{self.api_base_url}/chat/completions",
+            data=data,
+            headers={
+                "Authorization": f"Bearer {self.api_key}",
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            },
+            method="POST"
+        )
+
+        try:
+            opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+            with opener.open(request) as response:
+                body = response.read().decode("utf-8")
+            parsed = json.loads(body)
+            content = parsed["choices"][0]["message"].get("content", "").strip()
+            return self._normalize_llm_annotation(content, question_text)
+        except (KeyError, json.JSONDecodeError, urllib.error.URLError, TimeoutError, OSError) as exc:
+            try:
+                return self._annotate_with_curl(data, question_text)
+            except (KeyError, json.JSONDecodeError, subprocess.SubprocessError, OSError) as curl_exc:
+                curl_message = getattr(curl_exc, "stderr", b"")
+                if isinstance(curl_message, bytes):
+                    curl_message = curl_message.decode("utf-8", errors="ignore").strip()
+                print(f"[标注器] DeepSeek 标注失败，已回退本地规则: {exc}; curl={curl_message or type(curl_exc).__name__}")
+                return None
+
+    def _annotate_with_curl(self, data, question_text):
+        """当前 Python SSL 不可用时，使用系统 curl.exe 作为 HTTPS 备用通道。"""
+        proc = subprocess.run(
+            [
+                "curl.exe",
+                "--silent",
+                "--show-error",
+                "--fail",
+                "--noproxy",
+                "*",
+                "-X",
+                "POST",
+                f"{self.api_base_url}/chat/completions",
+                "-H",
+                f"Authorization: Bearer {self.api_key}",
+                "-H",
+                "Content-Type: application/json",
+                "--data-binary",
+                "@-"
+            ],
+            input=data,
+            capture_output=True,
+            check=True
+        )
+        parsed = json.loads(proc.stdout.decode("utf-8"))
+        content = parsed["choices"][0]["message"].get("content", "").strip()
+        return self._normalize_llm_annotation(content, question_text)
+
+    def _normalize_llm_annotation(self, content, question_text):
+        """清理并校验大模型返回的标注结果。"""
+        content = re.sub(r"^```(?:json)?|```$", "", content.strip(), flags=re.I | re.M).strip()
+        match = re.search(r"\{.*\}", content, re.S)
+        if match:
+            content = match.group(0)
+        data = json.loads(content)
+
+        subject = str(data.get("subject", "")).strip()
+        difficulty = str(data.get("difficulty", "")).strip()
+        answer = str(data.get("answer", "")).strip()
+        question_type = str(data.get("question_type", "")).strip()
+
+        if subject not in self.SUBJECTS:
+            subject = self._classify_subject(question_text)
+        if difficulty not in self.DIFFICULTIES:
+            difficulty = self._classify_difficulty(question_text)
+        if question_type not in self.QUESTION_TYPES:
+            question_type = self._detect_question_type(question_text)
+        if not answer:
+            answer = self._generate_answer(question_text, question_type)
+
+        return {
+            "subject": subject,
+            "difficulty": difficulty,
+            "question_type": question_type,
+            "answer": answer
+        }
 
     # ============================================================
     # 题型识别

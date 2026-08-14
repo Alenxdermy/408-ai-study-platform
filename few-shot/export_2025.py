@@ -171,10 +171,12 @@ def extract_subjective_explanations(answer_texts: list[str]) -> dict[int, str]:
 
 
 def classify_questions(blocks):
-    annotator = QuestionAnnotator(mode='hybrid')
+    annotator = QuestionAnnotator(mode='llm')
     results = []
 
     for block in blocks:
+        if len(block['options']) < 2:
+            continue
         question_text = block['stem']
         if block['options']:
             option_text = '\n'.join(f"{item['key']}. {item['content']}" for item in block['options'])

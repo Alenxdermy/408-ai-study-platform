@@ -1,18 +1,45 @@
 import { execFile } from 'node:child_process';
+import { randomUUID } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { promisify } from 'node:util';
 import type { Response } from 'express';
-import { Op } from 'sequelize';
+import { Op, type Transaction } from 'sequelize';
 import { ChapterModel } from '../../models/chapter.model.js';
+import { FavoriteModel } from '../../models/favorite.model.js';
+import { PaperModel } from '../../models/paper.model.js';
 import { QuestionModel } from '../../models/question.model.js';
+import { ReviewTaskModel } from '../../models/review-task.model.js';
+import { StudyRecordModel } from '../../models/study-record.model.js';
+import { WrongBookModel } from '../../models/wrong-book.model.js';
+import { sequelize } from '../../shared/database.js';
 import { AppError, ok } from '../../shared/http.js';
 import { serializeQuestion, serializeQuestions } from '../question/question.serializer.js';
 
 type QuestionType = 'single' | 'multiple' | 'judge' | 'blank' | 'essay';
 type SubjectKey = 'data_structure' | 'computer_organization' | 'os' | 'computer_network';
+type ImportJobStatus = 'queued' | 'processing' | 'succeeded' | 'failed';
+type ImportJob = {
+  id: string;
+  status: ImportJobStatus;
+  fileName: string;
+  year?: number;
+  stage: string;
+  result?: {
+    created: number;
+    updated: number;
+    skipped: number;
+    total: number;
+    items: any[];
+  };
+  error?: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+const importJobs = new Map<string, ImportJob>();
 
 const SUBJECT_LABELS: Record<SubjectKey, string> = {
   data_structure: '数据结构',
@@ -232,6 +259,31 @@ const buildQuestionPayload = async (
 const toQuestionDTO = serializeQuestion;
 const execFileAsync = promisify(execFile);
 
+const isSingleChoicePayload = (payload: { type: QuestionType; options: unknown[] }) => (
+  payload.type === 'single' && payload.options.length >= 2
+);
+
+const removeQuestionReferences = async (questionIds: string[], transaction?: Transaction) => {
+  if (!questionIds.length) return;
+  const where = { questionId: { [Op.in]: questionIds } };
+
+  await Promise.all([
+    FavoriteModel.destroy({ where, transaction }),
+    WrongBookModel.destroy({ where, transaction }),
+    StudyRecordModel.destroy({ where, transaction }),
+    ReviewTaskModel.destroy({ where, transaction })
+  ]);
+
+  const papers = await PaperModel.findAll({ transaction });
+  await Promise.all(papers.map(async paper => {
+    const currentIds = Array.isArray(paper.questionIds) ? paper.questionIds : [];
+    const nextIds = currentIds.filter(id => !questionIds.includes(String(id)));
+    if (nextIds.length !== currentIds.length) {
+      await paper.update({ questionIds: nextIds }, { transaction });
+    }
+  }));
+};
+
 const findFewShotDir = () => {
   const candidates = [
     path.resolve(process.cwd(), 'few-shot'),
@@ -247,10 +299,16 @@ const findFewShotDir = () => {
 const importQuestionRows = async (rows: Array<Record<string, any>>, source = '') => {
   let created = 0;
   let updated = 0;
+  let skipped = 0;
   const items = [];
 
   for (const raw of rows) {
     const payload = await buildQuestionPayload(raw, source);
+    if (!isSingleChoicePayload(payload)) {
+      skipped += 1;
+      continue;
+    }
+
     const existed = await QuestionModel.findOne({
       where: {
         source: payload.source,
@@ -269,7 +327,58 @@ const importQuestionRows = async (rows: Array<Record<string, any>>, source = '')
     }
   }
 
-  return { created, updated, total: rows.length, items };
+  return { created, updated, skipped, total: rows.length, items };
+};
+
+const updateImportJob = (id: string, patch: Partial<ImportJob>) => {
+  const job = importJobs.get(id);
+  if (!job) return;
+  importJobs.set(id, {
+    ...job,
+    ...patch,
+    updatedAt: new Date().toISOString()
+  });
+};
+
+const startPdfImportJob = (file: Express.Multer.File, year?: number) => {
+  const id = randomUUID();
+  const now = new Date().toISOString();
+  importJobs.set(id, {
+    id,
+    status: 'queued',
+    fileName: file.originalname,
+    year,
+    stage: '任务已创建，等待开始识别',
+    createdAt: now,
+    updatedAt: now
+  });
+
+  setImmediate(async () => {
+    try {
+      updateImportJob(id, { status: 'processing', stage: '正在读取 PDF 并提取题目' });
+      const extracted = await extractPdfWithFewShot(file, year);
+      const rows = extractPayloads(extracted);
+      if (!rows.length) {
+        throw new AppError(400, 'PDF 未识别到可导入的选择题', 'PDF_EMPTY_IMPORT');
+      }
+
+      updateImportJob(id, { stage: `已识别 ${rows.length} 道候选题，正在筛选选择题并入库` });
+      const result = await importQuestionRows(rows, file.originalname);
+      updateImportJob(id, {
+        status: 'succeeded',
+        stage: `导入完成：新增 ${result.created}，更新 ${result.updated}，跳过 ${result.skipped}`,
+        result
+      });
+    } catch (error: any) {
+      updateImportJob(id, {
+        status: 'failed',
+        stage: '导入失败',
+        error: String(error?.message || error || 'PDF 导入失败')
+      });
+    }
+  });
+
+  return importJobs.get(id)!;
 };
 
 const extractPdfWithFewShot = async (file: Express.Multer.File, year?: number) => {
@@ -286,7 +395,6 @@ const extractPdfWithFewShot = async (file: Express.Multer.File, year?: number) =
     await execFileAsync('python', args, {
       cwd: fewShotDir,
       env: { ...process.env, PYTHONIOENCODING: 'utf-8' },
-      timeout: 180_000,
       maxBuffer: 10 * 1024 * 1024,
       windowsHide: true
     });
@@ -317,7 +425,6 @@ const import2025FromDocs = async () => {
     await execFileAsync('python', [scriptPath, '--paper', paperPath, '--answer', answerPath, '--output', outputPath], {
       cwd: fewShotDir,
       env: { ...process.env, PYTHONIOENCODING: 'utf-8' },
-      timeout: 300_000,
       maxBuffer: 10 * 1024 * 1024,
       windowsHide: true
     });
@@ -379,6 +486,9 @@ export class AdminQuestionController {
 
   static async create(req: any, res: Response) {
     const payload = await buildQuestionPayload(req.body ?? {});
+    if (!isSingleChoicePayload(payload)) {
+      throw new AppError(400, 'Only single choice questions can be saved', 'ONLY_SINGLE_CHOICE_ALLOWED');
+    }
     const question = await QuestionModel.create(payload);
     ok(res, toQuestionDTO(question), '题目已创建');
   }
@@ -388,12 +498,19 @@ export class AdminQuestionController {
     if (!question) throw new AppError(404, '题目不存在', 'QUESTION_NOT_FOUND');
 
     const payload = await buildQuestionPayload({ ...question.toJSON(), ...req.body }, question.source, question.chapterId);
+    if (!isSingleChoicePayload(payload)) {
+      throw new AppError(400, 'Only single choice questions can be saved', 'ONLY_SINGLE_CHOICE_ALLOWED');
+    }
     await question.update(payload);
     ok(res, toQuestionDTO(question), '题目已更新');
   }
 
   static async remove(req: any, res: Response) {
-    const deleted = await QuestionModel.destroy({ where: { id: String(req.params.id) } });
+    const questionId = String(req.params.id);
+    const deleted = await sequelize.transaction(async transaction => {
+      await removeQuestionReferences([questionId], transaction);
+      return QuestionModel.destroy({ where: { id: questionId }, transaction });
+    });
     if (!deleted) throw new AppError(404, '题目不存在', 'QUESTION_NOT_FOUND');
     ok(res, { deleted: true }, '题目已删除');
   }
@@ -427,6 +544,20 @@ export class AdminQuestionController {
 
     const data = await importQuestionRows(rows, file.originalname);
     ok(res, data, 'PDF 题目导入完成');
+  }
+
+  static async createPdfImportJob(req: any, res: Response) {
+    const file = req.file as Express.Multer.File | undefined;
+    if (!file) throw new AppError(400, '请上传 PDF 文件', 'PDF_FILE_REQUIRED');
+
+    const year = Number(req.body?.year ?? 0) || undefined;
+    ok(res, startPdfImportJob(file, year), 'PDF 识别任务已开始');
+  }
+
+  static async getImportJob(req: any, res: Response) {
+    const job = importJobs.get(String(req.params.id));
+    if (!job) throw new AppError(404, '导入任务不存在或后端已重启', 'IMPORT_JOB_NOT_FOUND');
+    ok(res, job);
   }
 
   static async import2025(_req: any, res: Response) {

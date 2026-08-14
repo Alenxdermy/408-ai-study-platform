@@ -8,6 +8,12 @@ interface DashboardData {
   studyStats?: {
     wrongBookCount: number;
     favoriteCount: number;
+    totalAnswered: number;
+    correctAnswered: number;
+    accuracy: number;
+    weakSubjects: Array<{ subject: string; label: string; count: number }>;
+    favoriteSubjects: Array<{ subject: string; label: string; count: number }>;
+    report: string;
   };
 }
 

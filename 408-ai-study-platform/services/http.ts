@@ -39,7 +39,7 @@ const request = async <T>(
       url: buildUrl(url, options?.params),
       method,
       data,
-      timeout: options?.timeout ?? 20000,
+      ...(options?.timeout ? { timeout: options.timeout } : {}),
       header: {
         'Content-Type': 'application/json',
         ...(token ? { Authorization: `Bearer ${token}` } : {})

@@ -223,6 +223,8 @@ def run_pdf_file(annotator, pdf_path, output_path=None, year=None, use_ocr_fallb
 
     results = []
     for index, question in enumerate(questions, 1):
+        if len(question.get("options") or []) < 2:
+            continue
         question_text = _format_question_text(question)
         annotation = annotator.annotate_detailed(question_text)
         item = {
@@ -320,9 +322,9 @@ def main():
     parser.add_argument('--stats', '-s', action='store_true', help='查看示例库统计')
     parser.add_argument('--prompt', '-p', type=str, help='生成 Few-Shot Prompt')
     parser.add_argument('--test', '-t', action='store_true', help='运行内置测试')
-    parser.add_argument('--mode', '-m', type=str, default='hybrid',
-                       choices=['rule', 'similarity', 'hybrid'],
-                       help='标注模式: rule/similarity/hybrid (默认hybrid)')
+    parser.add_argument('--mode', '-m', type=str, default='llm',
+                       choices=['rule', 'similarity', 'hybrid', 'llm'],
+                       help='标注模式: rule/similarity/hybrid/llm (默认llm)')
     parser.add_argument('--verbose', '-v', action='store_true', help='详细输出')
 
     args = parser.parse_args()

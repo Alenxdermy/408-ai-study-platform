@@ -15,6 +15,18 @@ export interface QuestionItem {
   tags?: string[];
 }
 
+export interface ImportJob {
+  id: string;
+  status: 'queued' | 'processing' | 'succeeded' | 'failed';
+  fileName: string;
+  year?: number;
+  stage: string;
+  result?: { created: number; updated: number; skipped: number; total: number; items: QuestionItem[] };
+  error?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 interface ApiResponse<T> {
   code: number | string;
   message: string;
@@ -55,5 +67,9 @@ export const api = {
   importJson: (jsonText: string) => request<{ created: number; updated: number; total: number; items: QuestionItem[] }>('POST', '/admin/questions/import', { jsonText }),
   importPdf: (formData: FormData) =>
     request<{ created: number; updated: number; total: number; items: QuestionItem[] }>('POST', '/admin/questions/import-pdf', formData),
+  importPdfJob: (formData: FormData) =>
+    request<ImportJob>('POST', '/admin/questions/import-pdf-job', formData),
+  getImportJob: (id: string) =>
+    request<ImportJob>('GET', `/admin/questions/import-jobs/${id}`),
   import2025: () => request<{ created: number; updated: number; total: number; items: QuestionItem[] }>('POST', '/admin/questions/import-2025')
 };
