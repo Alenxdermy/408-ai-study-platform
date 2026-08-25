@@ -18,11 +18,14 @@ textarea {
 
 button {
   min-height: 40px;
-  border: 0;
+  border: 1px solid #d1d5db;
   border-radius: 8px;
   padding: 0 16px;
+  color: #111827;
+  background: #ffffff;
   cursor: pointer;
   font-weight: 700;
+  box-shadow: 0 6px 14px rgba(15, 23, 42, 0.06);
 }
 
 button:disabled {
@@ -183,18 +186,21 @@ label {
 }
 
 .primary {
-  color: #ffffff;
-  background: #2563eb;
+  color: #111827;
+  background: #ffffff;
+  border-color: #d1d5db;
 }
 
 .ghost {
-  color: #1d4ed8;
-  background: #eaf1ff;
+  color: #111827;
+  background: #ffffff;
+  border-color: #d1d5db;
 }
 
 .danger {
-  color: #ffffff;
-  background: #dc2626;
+  color: #111827;
+  background: #ffffff;
+  border-color: #9ca3af;
 }
 
 .full {

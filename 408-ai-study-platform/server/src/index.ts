@@ -43,8 +43,8 @@ const bootstrap = async () => {
     logger.info({ socketId: socket.id }, 'socket connected');
   });
 
-  httpServer.listen(env.PORT, () => {
-    logger.info(`server listening on http://localhost:${env.PORT}`);
+  httpServer.listen(env.PORT, env.HOST, () => {
+    logger.info(`server listening on http://${env.HOST}:${env.PORT}`);
   });
 };
 

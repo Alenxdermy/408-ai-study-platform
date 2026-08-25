@@ -218,6 +218,11 @@ onMounted(() => {
   box-shadow: inset 0 0 0 1px rgba(226, 232, 240, 0.7);
 }
 
+.form :deep(.u-textarea__field),
+.form :deep(textarea) {
+  color: #111827 !important;
+}
+
 .tip-row {
   display: flex;
   flex-wrap: wrap;

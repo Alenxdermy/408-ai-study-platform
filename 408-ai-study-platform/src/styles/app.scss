@@ -119,6 +119,20 @@ page {
   animation: softRise 540ms ease-out both;
 }
 
+.u-button,
+.u-button--primary,
+.u-button--success,
+.u-button--warning,
+.u-button--error {
+  color: #111827 !important;
+  background: #ffffff !important;
+  border: 1px solid #d1d5db !important;
+}
+
+.u-button__text {
+  color: #111827 !important;
+}
+
 .button-row :deep(.u-button),
 .actions :deep(.u-button),
 .resource-actions :deep(.u-button),
@@ -127,8 +141,20 @@ page {
 .pdf-actions :deep(.u-button) {
   position: relative;
   overflow: hidden;
-  box-shadow: 0 10rpx 22rpx rgba(37, 99, 235, 0.13);
+  color: #111827 !important;
+  background: #ffffff !important;
+  border: 1px solid #d1d5db !important;
+  box-shadow: 0 8rpx 18rpx rgba(15, 23, 42, 0.06);
   transition: transform 160ms ease, box-shadow 160ms ease, opacity 160ms ease;
+}
+
+.button-row :deep(.u-button__text),
+.actions :deep(.u-button__text),
+.resource-actions :deep(.u-button__text),
+.card-actions :deep(.u-button__text),
+.form :deep(.u-button__text),
+.pdf-actions :deep(.u-button__text) {
+  color: #111827 !important;
 }
 
 .button-row :deep(.u-button:active),
@@ -138,7 +164,7 @@ page {
 .form :deep(.u-button:active),
 .pdf-actions :deep(.u-button:active) {
   transform: translateY(1rpx) scale(0.996);
-  box-shadow: 0 6rpx 14rpx rgba(37, 99, 235, 0.12);
+  box-shadow: 0 5rpx 12rpx rgba(15, 23, 42, 0.08);
 }
 
 .skeleton-line {

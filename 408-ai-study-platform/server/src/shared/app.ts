@@ -17,13 +17,26 @@ const clientOrigins = env.CLIENT_ORIGIN.split(',')
   .map(origin => origin.trim())
   .filter(Boolean);
 
+const isLocalNetworkOrigin = (origin: string) => {
+  try {
+    const { hostname } = new URL(origin);
+    return hostname === 'localhost'
+      || hostname === '127.0.0.1'
+      || hostname.startsWith('192.168.')
+      || hostname.startsWith('10.')
+      || /^172\.(1[6-9]|2\d|3[0-1])\./.test(hostname);
+  } catch {
+    return false;
+  }
+};
+
 export const createApp = () => {
   const app = express();
 
   app.use(helmet());
   app.use(cors({
     origin: (origin, callback) => {
-      if (!origin || clientOrigins.includes(origin)) {
+      if (!origin || clientOrigins.includes(origin) || (env.NODE_ENV === 'development' && isLocalNetworkOrigin(origin))) {
         callback(null, true);
         return;
       }

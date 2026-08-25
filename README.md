@@ -34,6 +34,13 @@ PDF 元数据：保存在 MySQL 的 resource_documents 表
 小程序资料页：从后端 /api/resources 读取数据库记录
 ```
 
+当前界面约定：
+
+```text
+小程序和独立后台网页按钮统一为白底、黑字、浅灰边框。
+AI 问答页输入框文字为黑色，保证真机调试和电脑预览时清晰可读。
+```
+
 ## 2. 日常运行
 
 日常开发只需要启动后端和需要使用的前端，不需要每次初始化数据库，也不需要每次同步 PDF。
@@ -52,7 +59,7 @@ npm run dev:server
 ```text
 mysql connected
 mysql model synchronization skipped
-server listening on http://localhost:3000
+server listening on http://0.0.0.0:3000
 ```
 
 第三步，再打开一个新终端启动微信小程序编译：
@@ -277,6 +284,12 @@ ipconfig
 
 ```env
 VITE_API_BASE_URL=http://192.168.1.8:3000/api
+```
+
+后端 `server\.env` 建议保持：
+
+```env
+HOST=0.0.0.0
 ```
 
 然后重新运行：
