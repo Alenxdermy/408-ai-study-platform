@@ -1,5 +1,7 @@
 import type { Response } from 'express';
 import { FavoriteModel } from '../../models/favorite.model.js';
+import { QuestionModel } from '../../models/question.model.js';
+import { ResourceDocumentModel } from '../../models/resource-document.model.js';
 import { StudyRecordModel } from '../../models/study-record.model.js';
 import { UserModel } from '../../models/user.model.js';
 import { WrongBookModel } from '../../models/wrong-book.model.js';
@@ -40,7 +42,9 @@ export class StudyController {
       totalAnswered,
       correctAnswered,
       weakSubjectRows,
-      favoriteSubjectRows
+      favoriteSubjectRows,
+      questionCount,
+      resourceCount
     ] = await Promise.all([
       UserModel.findByPk(req.userId),
       StudyRecordModel.findAll({
@@ -69,7 +73,9 @@ export class StudyController {
          GROUP BY q.subject
          ORDER BY count DESC`,
         { replacements: [req.userId], type: 'SELECT' }
-      )
+      ),
+      QuestionModel.count({ where: { status: 'published', type: 'single' } }),
+      ResourceDocumentModel.count({ where: { status: 'published' } })
     ]);
 
     const weakSubjects = (weakSubjectRows as Array<{ subject: string; count: number }>).map(item => ({
@@ -99,7 +105,9 @@ export class StudyController {
         accuracy,
         weakSubjects,
         favoriteSubjects,
-        report
+        report,
+        questionCount,
+        resourceCount
       }
     });
   }

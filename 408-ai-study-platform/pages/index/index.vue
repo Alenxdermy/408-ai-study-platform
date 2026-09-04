@@ -9,6 +9,9 @@ const loading = ref(false);
 
 const recentCount = computed(() => study.dashboard.recentRecords?.length ?? 0);
 const nickname = computed(() => String(auth.user?.nickname ?? '408 考生'));
+const studyStats = computed(() => study.dashboard.studyStats ?? {});
+const questionCount = computed(() => Number((studyStats.value as { questionCount?: number }).questionCount ?? 0));
+const resourceCount = computed(() => Number((studyStats.value as { resourceCount?: number }).resourceCount ?? 0));
 
 const statCards = computed(() => [
   { value: '10', label: '每日一练', tone: 'blue' },
@@ -28,10 +31,10 @@ const quickActions = [
   { title: 'AI 讲题', desc: '答案、考点、易错点', action: 'ai' }
 ];
 
-const focusCards = [
-  { title: '资料入库', value: '34', desc: '真题与答案' },
-  { title: '学习闭环', value: '3步', desc: '刷题-阅读-复盘' }
-];
+const focusCards = computed(() => [
+  { title: '题库数量', value: String(questionCount.value), desc: '选择题' },
+  { title: '资料入库', value: String(resourceCount.value), desc: '真题与答案' }
+]);
 
 onMounted(async () => {
   loading.value = true;
@@ -124,12 +127,6 @@ const handleQuickAction = (action: string) => {
           <text class="focus-desc">{{ item.desc }}</text>
         </view>
       </view>
-    </view>
-
-    <view class="panel section recommendation">
-      <text class="eyebrow">AI RECOMMEND</text>
-      <text class="card-title">没有题库也能推进</text>
-      <text class="muted">先使用固定真题 PDF 进行阅读和下载，后续再从真题、讲义或章节资料中抽取结构化题库。</text>
     </view>
 
     <view class="button-row">

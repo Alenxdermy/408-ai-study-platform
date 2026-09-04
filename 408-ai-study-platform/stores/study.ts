@@ -14,6 +14,8 @@ interface DashboardData {
     weakSubjects: Array<{ subject: string; label: string; count: number }>;
     favoriteSubjects: Array<{ subject: string; label: string; count: number }>;
     report: string;
+    questionCount: number;
+    resourceCount: number;
   };
 }
 
