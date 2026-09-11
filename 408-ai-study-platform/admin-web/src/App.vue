@@ -109,31 +109,44 @@ const buildPayload = () => ({
   tags: form.tagsText
 });
 
+const toMessage = (err: unknown) => (err instanceof Error ? err.message : '请求失败');
+
 const loadStats = async () => {
   stats.value = await api.stats();
+};
+
+const fetchQuestions = async () => {
+  const data = await api.list({
+    keyword: keyword.value.trim(),
+    subject: filterSubject.value,
+    year: filterYear.value ? Number(filterYear.value) : undefined,
+    page: 1,
+    pageSize: 100
+  });
+  list.value = data.items ?? [];
+  total.value = data.total ?? 0;
 };
 
 const loadQuestions = async () => {
   loading.value = true;
   try {
-    const data = await api.list({
-      keyword: keyword.value.trim(),
-      subject: filterSubject.value,
-      year: filterYear.value ? Number(filterYear.value) : undefined,
-      page: 1,
-      pageSize: 100
-    });
-    list.value = data.items ?? [];
-    total.value = data.total ?? 0;
+    await fetchQuestions();
   } catch (err) {
-    showError((err as Error).message);
+    showError(toMessage(err));
   } finally {
     loading.value = false;
   }
 };
 
 const refreshAll = async () => {
-  await Promise.all([loadStats(), loadQuestions()]);
+  loading.value = true;
+  try {
+    await Promise.all([loadStats(), fetchQuestions()]);
+  } catch (err) {
+    showError(toMessage(err));
+  } finally {
+    loading.value = false;
+  }
 };
 
 const editQuestion = (item: QuestionItem) => {
@@ -168,7 +181,7 @@ const saveQuestion = async () => {
     resetForm();
     await refreshAll();
   } catch (err) {
-    showError((err as Error).message);
+    showError(toMessage(err));
   } finally {
     saving.value = false;
   }
@@ -181,7 +194,7 @@ const deleteQuestion = async (item: QuestionItem) => {
     showMessage('题目已删除');
     await refreshAll();
   } catch (err) {
-    showError((err as Error).message);
+    showError(toMessage(err));
   }
 };
 
@@ -200,7 +213,7 @@ const importJson = async () => {
     showMessage(`JSON 导入完成：新增 ${result.created}，更新 ${result.updated}`);
     await refreshAll();
   } catch (err) {
-    showError((err as Error).message);
+    showError(toMessage(err));
   } finally {
     importing.value = false;
   }
@@ -209,6 +222,17 @@ const importJson = async () => {
 const selectPdf = (event: Event) => {
   pdfFile.value = (event.target as HTMLInputElement).files?.[0] ?? null;
 };
+
+const readFileAsBase64 = (file: File) => new Promise<string>((resolve, reject) => {
+  const reader = new FileReader();
+  reader.onload = () => {
+    const result = String(reader.result || '');
+    const base64 = result.includes(',') ? result.split(',', 2)[1] : result;
+    resolve(base64);
+  };
+  reader.onerror = () => reject(new Error('PDF 读取失败'));
+  reader.readAsDataURL(file);
+});
 
 const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -232,12 +256,14 @@ const importPdf = async () => {
   importing.value = true;
   importStatus.value = '正在上传 PDF，请稍候...';
   try {
-    const data = new FormData();
-    data.append('file', pdfFile.value);
+    const fileBase64 = await readFileAsBase64(pdfFile.value);
     const yearText = String(pdfYear.value ?? '').trim();
-    if (yearText) data.append('year', yearText);
 
-    const job = await api.importPdfJob(data);
+    const job = await api.importPdfJob({
+      fileBase64,
+      fileName: pdfFile.value.name,
+      year: yearText || undefined
+    });
     importStatus.value = `${job.stage}（任务号：${job.id}）`;
     const done = await waitImportJob(job.id);
     const result = done.result ?? { created: 0, updated: 0, skipped: 0, total: 0, items: [] };
@@ -245,7 +271,7 @@ const importPdf = async () => {
     showMessage(`PDF 识别完成：新增 ${result.created}，更新 ${result.updated}，跳过 ${result.skipped}，候选 ${result.total}`);
     await refreshAll();
   } catch (err) {
-    showError((err as Error).message);
+    showError(toMessage(err));
   } finally {
     importing.value = false;
     importStatus.value = '';
@@ -260,7 +286,7 @@ const import2025 = async () => {
     showMessage(`2025 真题导入完成：新增 ${result.created}，更新 ${result.updated}`);
     await refreshAll();
   } catch (err) {
-    showError((err as Error).message);
+    showError(toMessage(err));
   } finally {
     importing.value = false;
   }

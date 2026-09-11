@@ -1,6 +1,11 @@
 import { clearSession } from './session';
 
+declare const wx: any;
+
 const defaultApiBaseUrl = 'http://127.0.0.1:3000/api';
+const cloudFunctionName = import.meta.env.VITE_CLOUD_FUNCTION_NAME ?? 'api';
+const cloudEnv = import.meta.env.VITE_CLOUD_ENV ?? 'cloudbase-d8gk6gtnw00fe55a2';
+let cloudInited = false;
 
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? defaultApiBaseUrl;
 
@@ -33,9 +38,40 @@ const request = async <T>(
   url: string,
   data?: unknown,
   options?: RequestOptions
-) => new Promise<T>((resolve, reject) => {
+) => {
   const token = uni.getStorageSync('token') || '';
 
+  // #ifdef MP-WEIXIN
+  if (import.meta.env.VITE_USE_CLOUD !== 'false') {
+    if (typeof wx === 'undefined' || !wx.cloud) {
+      throw new Error('云开发不可用，请确认用微信开发者工具打开项目根目录');
+    }
+    if (!cloudInited) {
+      wx.cloud.init({ env: cloudEnv, traceUser: true });
+      cloudInited = true;
+    }
+    try {
+      const response = await wx.cloud.callFunction({
+        name: cloudFunctionName,
+        data: {
+          method,
+          path: url,
+          body: data,
+          params: options?.params,
+          token
+        }
+      });
+      const body = response.result as ApiResponse<T> | undefined;
+      if (body?.code === 0) return body.data;
+      if (body?.code === 401) clearSession();
+      throw new Error(body?.message || '云函数请求失败');
+    } catch (error) {
+      throw error instanceof Error ? error : new Error('云函数请求失败');
+    }
+  }
+  // #endif
+
+  return new Promise<T>((resolve, reject) => {
   uni.request({
     url: buildUrl(url, options?.params),
     method,
@@ -61,7 +97,8 @@ const request = async <T>(
     },
     fail: error => reject(error)
   });
-});
+  });
+};
 
 export const http = {
   get: <T = unknown>(url: string, options?: RequestOptions) => request<T>('GET', url, undefined, options),

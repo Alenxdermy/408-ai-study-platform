@@ -1,4 +1,11 @@
+import { clearSession } from './session';
+
+declare const wx: any;
+
 const defaultApiBaseUrl = 'http://127.0.0.1:3000/api';
+const cloudFunctionName = import.meta.env.VITE_CLOUD_FUNCTION_NAME ?? 'api';
+const cloudEnv = import.meta.env.VITE_CLOUD_ENV ?? 'cloudbase-d8gk6gtnw00fe55a2';
+let cloudInited = false;
 
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? defaultApiBaseUrl;
 
@@ -34,31 +41,68 @@ const request = async <T>(
 ) => {
   const token = uni.getStorageSync('token') || '';
 
-  return new Promise<T>((resolve, reject) => {
-    uni.request({
-      url: buildUrl(url, options?.params),
-      method,
-      data,
-      ...(options?.timeout ? { timeout: options.timeout } : {}),
-      header: {
-        'Content-Type': 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {})
-      },
-      success: response => {
-        const body = response.data as ApiResponse<T>;
-        if (response.statusCode >= 200 && response.statusCode < 300 && body?.code === 0) {
-          resolve(body.data);
-          return;
+  // #ifdef MP-WEIXIN
+  if (import.meta.env.VITE_USE_CLOUD !== 'false') {
+    if (typeof wx === 'undefined' || !wx.cloud) {
+      throw new Error('云开发不可用，请确认用微信开发者工具打开项目根目录');
+    }
+    if (!cloudInited) {
+      wx.cloud.init({ env: cloudEnv, traceUser: true });
+      cloudInited = true;
+    }
+    try {
+      const response = await wx.cloud.callFunction({
+        name: cloudFunctionName,
+        data: {
+          method,
+          path: url,
+          body: data,
+          params: options?.params,
+          token
         }
+      });
+      const body = response.result as ApiResponse<T> | undefined;
+      if (body?.code === 0) return body.data;
+      if (body?.code === 401) clearSession();
+      throw new Error(body?.message || '云函数请求失败');
+    } catch (error) {
+      throw error instanceof Error ? error : new Error('云函数请求失败');
+    }
+  }
+  // #endif
 
-        reject(new Error(body?.message || `请求失败：${response.statusCode}`));
-      },
-      fail: error => reject(error)
-    });
+  return new Promise<T>((resolve, reject) => {
+  uni.request({
+    url: buildUrl(url, options?.params),
+    method,
+    data,
+    ...(options?.timeout ? { timeout: options.timeout } : {}),
+    header: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {})
+    },
+    success: response => {
+      const body = response.data as ApiResponse<T> | undefined;
+      if (response.statusCode >= 200 && response.statusCode < 300 && body?.code === 0) {
+        resolve(body.data);
+        return;
+      }
+
+      if (response.statusCode === 401) {
+        clearSession();
+      }
+
+      const message = body?.message || `请求失败：${response.statusCode}`;
+      reject(new Error(message));
+    },
+    fail: error => reject(error)
+  });
   });
 };
 
 export const http = {
   get: <T = unknown>(url: string, options?: RequestOptions) => request<T>('GET', url, undefined, options),
-  post: <T = unknown>(url: string, data?: unknown, options?: RequestOptions) => request<T>('POST', url, data, options)
+  post: <T = unknown>(url: string, data?: unknown, options?: RequestOptions) => request<T>('POST', url, data, options),
+  put: <T = unknown>(url: string, data?: unknown, options?: RequestOptions) => request<T>('PUT', url, data, options),
+  delete: <T = unknown>(url: string, data?: unknown, options?: RequestOptions) => request<T>('DELETE', url, data, options)
 };

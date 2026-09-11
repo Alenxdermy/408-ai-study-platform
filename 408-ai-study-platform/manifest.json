@@ -17,11 +17,6 @@
       "postcss": true
     },
     "usingComponents": true,
-    "permission": {
-      "scope.userInfo": {
-        "desc": "用于展示学习资料、学习统计和个性化学习服务"
-      }
-    },
     "requiredPrivateInfos": []
   },
   "h5": {

@@ -15,11 +15,13 @@
     "db:init": "npm --prefix server run db:init",
     "db:reset": "npm --prefix server run db:reset",
     "resources:sync": "npm --prefix server run resources:sync",
+    "migrate:cloudbase": "npm --prefix server run migrate:cloudbase",
     "seed:questions": "npm --prefix server run seed:questions",
     "lint": "eslint \"**/*.{ts,vue}\" --ignore-pattern \"server/dist/**\" --ignore-pattern \"dist/**\" && npm --prefix server run lint",
     "test": "npm --prefix server run test"
   },
   "dependencies": {
+    "@cloudbase/js-sdk": "^3.9.2",
     "@dcloudio/uni-app": "3.0.0-alpha-5010220260604001",
     "@dcloudio/uni-components": "3.0.0-alpha-5010220260604001",
     "@dcloudio/uni-h5": "3.0.0-alpha-5010220260604001",
@@ -49,4 +51,3 @@
     "node": ">=20.0.0"
   }
 }
-

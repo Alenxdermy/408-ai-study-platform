@@ -4,6 +4,7 @@ import { defineConfig } from 'vite';
 
 export default defineConfig({
   root: fileURLToPath(new URL('.', import.meta.url)),
+  envDir: fileURLToPath(new URL('..', import.meta.url)),
   plugins: [vue()],
   server: {
     host: '0.0.0.0',

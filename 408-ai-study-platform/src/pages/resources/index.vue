@@ -3,10 +3,13 @@ import { computed, onMounted, ref, watch } from 'vue';
 import { API_BASE_URL, http } from '../../services/http';
 import { useRipple, useScrollReveal } from '../../composables/useMotion';
 
+declare const wx: any;
+
 type ResourceKind = 'paper' | 'answer';
 
 interface ResourceDocument {
   id: string;
+  fileID?: string;
   title: string;
   description: string;
   category: ResourceKind | string;
@@ -24,6 +27,7 @@ interface PdfResource {
   title: string;
   description: string;
   fileName: string;
+  fileID?: string;
   size: number;
   viewCount: number;
   downloadCount: number;
@@ -60,6 +64,7 @@ const mapResource = (document: ResourceDocument): PdfResource => ({
   title: document.title,
   description: document.description,
   fileName: document.originalName,
+  fileID: document.fileID,
   size: document.size,
   viewCount: document.viewCount,
   downloadCount: document.downloadCount
@@ -157,6 +162,23 @@ const openDownloadedPdf = (filePath: string) => {
 
 const openPdf = (item: PdfResource, event?: MouseEvent | TouchEvent) => {
   if (event) useRipple(event);
+
+  // #ifdef MP-WEIXIN
+  if (item.fileID && typeof wx !== 'undefined' && wx.cloud) {
+    uni.showLoading({ title: '打开中...' });
+    wx.cloud.downloadFile({
+      fileID: item.fileID,
+      success: (result: { tempFilePath: string }) => openDownloadedPdf(result.tempFilePath),
+      fail: (error: UniApp.GeneralCallbackResult) => {
+        uni.hideLoading();
+        uni.showToast({ title: getNetworkErrorMessage(error), icon: 'none' });
+        console.warn('cloud downloadFile preview failed', error);
+      }
+    });
+    return;
+  }
+  // #endif
+
   const url = buildPdfUrl(item, 'preview');
 
   // #ifdef H5
@@ -190,6 +212,44 @@ const openPdf = (item: PdfResource, event?: MouseEvent | TouchEvent) => {
 
 const downloadPdf = (item: PdfResource, event?: MouseEvent | TouchEvent) => {
   if (event) useRipple(event);
+
+  // #ifdef MP-WEIXIN
+  if (item.fileID && typeof wx !== 'undefined' && wx.cloud) {
+    uni.showLoading({ title: '下载中...' });
+    wx.cloud.downloadFile({
+      fileID: item.fileID,
+      success: (result: { tempFilePath: string }) => {
+        uni.saveFile({
+          tempFilePath: result.tempFilePath,
+          success: saveResult => {
+            uni.hideLoading();
+            uni.showModal({
+              title: '下载完成',
+              content: 'PDF 已保存，可在微信文件菜单中打开、转发或收藏。',
+              confirmText: '打开',
+              cancelText: '知道了',
+              success: modal => {
+                if (modal.confirm) openDownloadedPdf(saveResult.savedFilePath);
+              }
+            });
+          },
+          fail: error => {
+            uni.hideLoading();
+            uni.showToast({ title: '保存失败', icon: 'none' });
+            console.warn('cloud saveFile failed', error);
+          }
+        });
+      },
+      fail: (error: UniApp.GeneralCallbackResult) => {
+        uni.hideLoading();
+        uni.showToast({ title: getNetworkErrorMessage(error), icon: 'none' });
+        console.warn('cloud downloadFile save failed', error);
+      }
+    });
+    return;
+  }
+  // #endif
+
   const url = buildPdfUrl(item, 'download');
 
   // #ifdef H5

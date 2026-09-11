@@ -1,85 +1,184 @@
 # 408 AI Study Platform
 
-面向 408 计算机考研用户的 UniApp 微信小程序项目。当前功能包括：首页学习看板、刷题训练、数据库驱动的 PDF 真题/答案资料库、AI 讲题、个人学习页、独立题库后台网页，以及 Node.js + Express 后端服务。
+面向 408 计算机考研用户的 UniApp 微信小程序项目。当前主方案已切换为微信云开发：小程序通过云函数访问云数据库，不再依赖本地 HTTP 后端、局域网 IP、域名校验或 MySQL。
 
-## 1. 当前状态
-
-项目代码目录：
+## 1. 项目位置
 
 ```text
 E:\python chapter\408\408-ai-study-platform
 ```
 
-PDF 文件目录：
+云开发环境：
 
 ```text
-E:\python chapter\408\docs
-├─ papers-rebuild   # 2009-2025 年真题 PDF
-└─ answers          # 2009-2025 年答案 PDF
+环境名称：cloudbase
+环境 ID：cloudbase-d8gk6gtnw00fe55a2
 ```
 
-数据库：
+云函数目录：
 
 ```text
-本地 MySQL
-数据库名：ai_408_study
-PDF 资源表：resource_documents
+E:\python chapter\408\408-ai-study-platform\cloudfunctions\api
 ```
 
-当前 PDF 方案：
+## 2. 云端数据结构
+
+请在云开发控制台创建这些数据库集合：
 
 ```text
-PDF 文件本体：保存在 E:\python chapter\408\docs
-PDF 元数据：保存在 MySQL 的 resource_documents 表
-小程序资料页：从后端 /api/resources 读取数据库记录
+users
+questions
+study_records
+favorites
+wrong_books
+checkins
+resources
+import_jobs
 ```
 
-当前界面约定：
+主要用途：
 
 ```text
-小程序和独立后台网页按钮统一为白底、黑字、浅灰边框。
-AI 问答页输入框文字为黑色，保证真机调试和电脑预览时清晰可读。
-首页题库数量、资料入库数量来自后端数据库统计，不再使用写死数字。
-首页打卡成功后会重新同步学习看板，连续天数以数据库用户统计为准。
+questions      题库，只保存选择题
+users          用户信息、目标分数、打卡统计
+study_records  答题记录
+favorites      用户收藏题目
+wrong_books    用户个人错题本
+checkins       打卡记录
+resources      PDF 资料元数据，文件本体放云存储
+import_jobs    后台 PDF 导入任务状态
 ```
 
-## 2. 日常运行
+## 3. 首次云开发部署
 
-日常开发只需要启动后端和需要使用的前端，不需要每次初始化数据库，也不需要每次同步 PDF。
-
-第一步，启动 MySQL。
-
-第二步，打开一个终端启动后端：
+第一步，安装项目依赖：
 
 ```powershell
 cd "E:\python chapter\408\408-ai-study-platform"
-npm run dev:server
+npm install --legacy-peer-deps
 ```
 
-看到类似输出即正常：
+第二步，在微信开发者工具中导入项目根目录：
 
 ```text
-mysql connected
-mysql model synchronization skipped
-server listening on http://0.0.0.0:3000
+E:\python chapter\408\408-ai-study-platform
 ```
 
-第三步，再打开一个新终端启动微信小程序编译：
+注意：现在使用云函数，应该导入项目根目录，不要只导入 `dist\dev\mp-weixin`，否则开发者工具看不到 `cloudfunctions`。
+
+第三步，运行小程序编译：
+
+```powershell
+npm run dev:mp-weixin
+```
+
+第四步，在微信开发者工具里找到：
+
+```text
+cloudfunctions/api
+```
+
+右键执行：
+
+```text
+上传并部署：云端安装依赖
+```
+
+云函数依赖包括：
+
+```text
+wx-server-sdk
+pdf-parse
+```
+
+第五步，在云函数 `api` 的环境变量里配置 DeepSeek：
+
+```text
+DEEPSEEK_API_KEY=你的 DeepSeek Key
+OPENAI_MODEL=deepseek-v4-pro
+```
+
+DeepSeek Key 只放云函数环境变量，不要写进小程序前端代码。
+
+第六步，在云开发控制台的 `API Key` 设置里生成 `Publishable Key`，然后写入根目录 `.env`：
+
+```env
+VITE_CLOUD_PUBLISHABLE_KEY=你的 Publishable Key
+```
+
+后台 Web 依赖这个 key 在浏览器里通过 CloudBase Web SDK 访问云函数。
+
+## 3.1 本地数据迁移到云端
+
+如果你要把本机 MySQL 和 `docs` 里的 PDF 一次性搬到云端，直接运行：
+
+```powershell
+npm run migrate:cloudbase
+```
+
+它会迁移数据库，并把 `docs/papers-rebuild` 与 `docs/answers` 里的 PDF 自动上传到云存储，再回填 `resources` 和 `resource_documents` 里的 `fileID`。
+
+它会迁移：
+
+```text
+chapters
+users
+questions
+papers
+favorites
+wrong_books
+study_records
+review_tasks
+chat_histories
+agent_logs
+knowledge_documents
+knowledge_chunks
+resource_documents
+resources
+```
+
+前提是：
+
+```text
+本机 MySQL 可连接
+VITE_CLOUD_ENV 正确
+VITE_CLOUD_PUBLISHABLE_KEY 有效
+```
+
+## 4. 日常运行小程序
+
+启动小程序编译：
 
 ```powershell
 cd "E:\python chapter\408\408-ai-study-platform"
 npm run dev:mp-weixin
 ```
 
-第四步，打开微信开发者工具，导入这个目录：
+微信开发者工具导入项目根目录：
 
 ```text
-E:\python chapter\408\408-ai-study-platform\dist\dev\mp-weixin
+E:\python chapter\408\408-ai-study-platform
 ```
 
-注意：不要导入项目根目录，要导入 `dist\dev\mp-weixin`。
+小程序端请求链路：
 
-如果要进入题库后台，再打开一个新终端启动独立后台网页：
+```text
+微信小程序 -> wx.cloud.callFunction(api) -> 云数据库
+```
+
+因此真机调试不再需要本地后端地址：
+
+```text
+http://192.168.x.x:3000/api
+```
+
+也不再需要为了访问后端准备域名。
+
+## 5. 后台 Web 管理系统
+
+后台 Web 仍是单独网页，但数据接口已切换为云函数。
+
+启动：
 
 ```powershell
 cd "E:\python chapter\408\408-ai-study-platform"
@@ -92,436 +191,202 @@ npm run dev:admin-web
 http://127.0.0.1:5174
 ```
 
-后台网页没有账号密码，直接打开即可使用。它是单独的 Web 页面，不在微信小程序里面。
-
-## 3. 首次环境准备
-
-只在第一次使用项目，或换电脑、删除依赖后执行。
-
-检查 Node.js 和 npm：
-
-```powershell
-node -v
-npm -v
-```
-
-进入项目目录：
-
-```powershell
-cd "E:\python chapter\408\408-ai-study-platform"
-```
-
-安装前端依赖：
-
-```powershell
-npm install --legacy-peer-deps
-```
-
-安装后端依赖：
-
-```powershell
-npm --prefix server install --legacy-peer-deps
-```
-
-## 4. 环境变量
-
-后端配置文件位置：
+后台功能：
 
 ```text
-E:\python chapter\408\408-ai-study-platform\server\.env
+题目列表
+题目新增
+题目编辑
+题目删除
+JSON 导入
+PDF 上传到云存储后识别入库
 ```
 
-关键配置应类似：
+后台 Web 会加载云开发 Web SDK。首次使用前，只要 `.env` 里配置了 `VITE_CLOUD_PUBLISHABLE_KEY`，浏览器就可以直接调用云函数。
 
-```env
-NODE_ENV=development
-PORT=3000
-CLIENT_ORIGIN=http://localhost:5173,http://127.0.0.1:5174
+## 6. PDF 题目导入
 
-DB_HOST=localhost
-DB_PORT=3306
-DB_NAME=ai_408_study
-DB_USER=root
-DB_PASSWORD=你的数据库密码
-DB_SYNC_MODE=none
-
-JWT_SECRET=dev-secret-key-for-408-study-platform-2026
-JWT_EXPIRES_IN=7d
-
-OPENAI_API_KEY=你的OpenAI兼容接口Key
-OPENAI_BASE_URL=https://api.openai.com/v1
-OPENAI_MODEL=gpt-4.1-mini
-OPENAI_EMBEDDING_MODEL=text-embedding-3-small
-
-STATIC_DOCS_DIR=E:\python chapter\408\docs
-UPLOAD_DIR=uploads
-LOG_LEVEL=info
-```
-
-重点：
-
-- `DB_SYNC_MODE` 日常必须保持 `none`。
-- `STATIC_DOCS_DIR` 必须指向 `E:\python chapter\408\docs`。
-- API Key 只写在后端 `.env`，不要写进前端代码。
-- 正确变量名是 `OPENAI_API_KEY`，不是 `OPENEN_API_KEY`。
-
-## 5. 数据库初始化
-
-你现在已经初始化过数据库。一般不需要重复执行。
-
-第一次初始化数据库时运行：
-
-```powershell
-cd "E:\python chapter\408\408-ai-study-platform"
-npm run db:init
-```
-
-这个命令会创建：
+后台导入 PDF 的新流程：
 
 ```text
-ai_408_study
+选择 PDF
+-> 上传到云存储
+-> api 云函数下载云文件
+-> 提取选择题
+-> 写入 questions 集合
 ```
 
-并创建项目表。
+注意：
 
-如果开发阶段数据库坏了，可以重置本项目数据库：
+- 云函数不能直接读取你电脑上的 `E:\python chapter\408\docs` 本地文件。
+- 原来的“一键导入 2025 真题”在云端不能直接读本地路径。
+- 现在应在后台选择对应 PDF 文件上传识别。
+- 当前云端 PDF 识别只筛选带 A/B/C/D 选项的选择题。
 
-```powershell
-npm run db:reset
-```
+## 7. PDF 资料库
 
-警告：`db:reset` 会删除并重建 `ai_408_study`，会清空该库里的数据。日常不要运行。
-
-## 6. PDF 资源同步
-
-你不需要每次运行 `npm run resources:sync`。
-
-只有以下情况才需要运行：
-
-- 第一次把 PDF 写入数据库
-- 新增了 PDF 文件
-- 替换了 PDF 文件
-- 修改了 `E:\python chapter\408\docs` 目录里的文件
-- 执行过 `npm run db:reset`
-
-同步命令：
-
-```powershell
-cd "E:\python chapter\408\408-ai-study-platform"
-npm run resources:sync
-```
-
-该命令会扫描：
+小程序资料页已支持云存储文件：
 
 ```text
-E:\python chapter\408\docs
+resources 集合保存 PDF 元数据和 fileID
+云存储保存 PDF 文件本体
+小程序使用 wx.cloud.downloadFile 打开 PDF
 ```
 
-并把 PDF 元数据写入：
+`resources` 记录建议字段：
+
+```json
+{
+  "title": "2025 年 408 真题",
+  "description": "408 统考真题",
+  "category": "paper",
+  "originalName": "2025.pdf",
+  "mimeType": "application/pdf",
+  "size": 123456,
+  "fileID": "cloud://...",
+  "status": "published",
+  "viewCount": 0,
+  "downloadCount": 0
+}
+```
+
+答案 PDF 的 `category` 使用：
 
 ```text
-resource_documents
+answer
 ```
 
-它不会删除 PDF 文件，也不会把 PDF 二进制塞进数据库。
+## 8. 常用命令
 
-## 7. 接口测试
-
-后端启动后，浏览器测试健康接口：
-
-```text
-http://localhost:3000/health
-```
-
-测试 PDF 资源列表：
-
-```text
-http://localhost:3000/api/resources
-```
-
-如果返回资源列表，说明数据库和资料接口正常。
-
-测试单个 PDF：
-
-1. 先从 `/api/resources` 返回结果里复制一个 `id`
-2. 再访问：
-
-```text
-http://localhost:3000/api/resources/资源ID/read
-```
-
-下载接口：
-
-```text
-http://localhost:3000/api/resources/资源ID/download
-```
-
-## 8. 微信开发者工具设置
-
-开发阶段建议勾选：
-
-```text
-详情 -> 本地设置 -> 不校验合法域名、web-view、TLS 版本以及 HTTPS 证书
-```
-
-否则本地接口、PDF 预览、PDF 下载可能失败。
-
-## 9. 真机调试
-
-如果只在电脑微信开发者工具中运行，可以使用：
-
-```env
-VITE_API_BASE_URL=http://localhost:3000/api
-```
-
-如果要手机真机预览，不能使用 `localhost`。需要改成电脑局域网 IP。
-
-查看电脑 IP：
-
-```powershell
-ipconfig
-```
-
-假设电脑 IP 是 `192.168.1.8`，项目根目录 `.env` 写：
-
-```env
-VITE_API_BASE_URL=http://192.168.1.8:3000/api
-```
-
-后端 `server\.env` 建议保持：
-
-```env
-HOST=0.0.0.0
-```
-
-然后重新运行：
+小程序开发：
 
 ```powershell
 npm run dev:mp-weixin
 ```
 
-真机调试还要保证：
-
-- 手机和电脑在同一个 WiFi
-- 后端正在运行
-- Windows 防火墙允许 Node.js
-- 微信开发者工具已勾选不校验合法域名
-
-## 10. 常用命令
-
-日常启动后端：
-
-```powershell
-npm run dev:server
-```
-
-日常启动微信小程序：
-
-```powershell
-npm run dev:mp-weixin
-```
-
-日常启动独立题库后台网页：
-
-```powershell
-npm run dev:admin-web
-```
-
-构建微信小程序：
+小程序构建：
 
 ```powershell
 npm run build:mp-weixin
 ```
 
-构建独立题库后台网页：
+后台 Web 开发：
+
+```powershell
+npm run dev:admin-web
+```
+
+后台 Web 构建：
 
 ```powershell
 npm run build:admin-web
 ```
 
-构建后端：
+旧本地后端仍保留，作为本地兜底或数据迁移参考：
 
 ```powershell
-npm run build:server
+npm run dev:server
 ```
 
-初始化数据库：
+## 9. 环境变量
 
-```powershell
-npm run db:init
+项目根目录 `.env` 当前使用：
+
+```env
+VITE_CLOUD_ENV=cloudbase-d8gk6gtnw00fe55a2
+VITE_CLOUD_FUNCTION_NAME=api
+VITE_CLOUD_PUBLISHABLE_KEY=你的 Publishable Key
+VITE_USE_CLOUD=true
+VITE_API_BASE_URL=http://127.0.0.1:3000/api
 ```
 
-重置数据库：
+说明：
 
-```powershell
-npm run db:reset
+- 微信小程序端默认走云函数。
+- 后台 Web 端需要 `VITE_CLOUD_PUBLISHABLE_KEY`。
+- `VITE_API_BASE_URL` 只作为 H5 或关闭云函数时的本地兜底地址。
+- 如果要临时切回本地后端，可设置 `VITE_USE_CLOUD=false` 并启动 `npm run dev:server`。
+
+## 10. 功能状态
+
+已迁移到云开发：
+
+```text
+登录 / 游客登录
+微信云环境用户识别
+刷题
+提交答案
+错题本
+收藏
+用户看板
+学习报告
+打卡
+AI 讲题
+题库后台增删改查
+JSON 导入
+PDF 上传识别入库
+PDF 云存储下载/预览
 ```
 
-同步 PDF 资源：
+保留但不再作为主链路：
 
-```powershell
-npm run resources:sync
+```text
+Node.js + Express 后端
+MySQL ai_408_study 数据库
+本地 docs PDF 资源目录
+本地 few-shot Python 脚本
 ```
 
-运行测试：
+## 11. 常见问题
 
-```powershell
-npm run test
+### 小程序不开调试仍然访问不了本地后端
+
+现在主链路已经不需要访问本地后端。请确认小程序请求走的是云函数：
+
+```text
+VITE_USE_CLOUD=true
 ```
 
-## 11. 项目结构
+并且已部署：
+
+```text
+cloudfunctions/api
+```
+
+### 云函数调用失败
+
+按顺序检查：
+
+1. 是否创建了云开发环境 `cloudbase-d8gk6gtnw00fe55a2`
+2. 是否创建了数据库集合
+3. 是否上传并部署了 `api` 云函数
+4. 是否选择了“云端安装依赖”
+5. 云函数环境变量是否配置 `DEEPSEEK_API_KEY`
+
+### 后台 Web 打不开云函数
+
+先检查 `.env` 里的 `VITE_CLOUD_PUBLISHABLE_KEY` 是否正确，再确认云开发控制台里生成的 key 还有效。
+
+### PDF 识别效果不稳定
+
+云端当前使用文本提取方式识别 PDF，适合文字型 PDF。如果 PDF 是扫描图片，必须接入 OCR，否则准确率会比较差。
+
+### 题库数量为 0
+
+说明 `questions` 集合里还没有已发布选择题。可以通过后台 Web 粘贴 JSON 导入，或上传 PDF 识别导入。
+
+## 12. 项目结构
 
 ```text
 408-ai-study-platform
-├─ src                  # UniApp 主源码目录
-│  ├─ pages             # 小程序页面
-│  ├─ services          # 前端请求封装
-│  ├─ stores            # Pinia 状态管理
-│  └─ styles            # 全局样式
-├─ pages                # 兼容 HBuilderX 的页面副本
-├─ services             # 兼容 HBuilderX 的服务副本
-├─ stores               # 兼容 HBuilderX 的状态副本
-├─ styles               # 兼容 HBuilderX 的样式副本
-├─ admin-web            # 独立题库后台网页
-├─ server               # Node.js + Express 后端
-├─ dist                 # 编译输出目录
-├─ package.json         # 根脚本
-├─ pages.json           # UniApp 页面配置
-├─ manifest.json        # 小程序基础配置
-└─ .env.example         # 环境变量示例
+├─ cloudfunctions
+│  └─ api              # 微信云函数统一接口
+├─ src                 # UniApp 主源码
+├─ pages               # 兼容 HBuilderX 的页面副本
+├─ services            # 兼容 HBuilderX 的服务副本
+├─ stores              # 状态管理
+├─ styles              # 全局样式
+├─ admin-web           # 独立题库后台网页
+├─ server              # 旧本地 Node 后端，保留兜底
+└─ dist                # 构建输出
 ```
-
-当前项目同时保留了根目录页面和 `src` 页面，是为了兼容 HBuilderX 和命令行构建。修改页面时两处要保持同步，后续可以再统一收敛。
-
-## 12. 常见问题
-
-### 小程序打开后还是 Hello 页面
-
-原因通常是导入目录错了。
-
-正确导入：
-
-```text
-E:\python chapter\408\408-ai-study-platform\dist\dev\mp-weixin
-```
-
-不要导入：
-
-```text
-E:\python chapter\408\408-ai-study-platform
-```
-
-### 资料页没有 PDF
-
-按顺序检查：
-
-1. 后端是否启动：`npm run dev:server`
-2. 数据库是否有 `ai_408_study`
-3. 浏览器是否能打开：`http://localhost:3000/api/resources`
-4. 是否执行过：`npm run resources:sync`
-5. `STATIC_DOCS_DIR` 是否指向 `E:\python chapter\408\docs`
-
-### PDF 预览失败
-
-按顺序检查：
-
-1. 后端是否启动
-2. 微信开发者工具是否勾选“不校验合法域名”
-3. 真机调试时是否使用电脑局域网 IP
-4. 手机和电脑是否同一 WiFi
-5. Windows 防火墙是否允许 Node.js
-
-### 后端启动失败
-
-优先检查：
-
-- MySQL 是否启动
-- `server\.env` 是否存在
-- `DB_PASSWORD` 是否正确
-- `DB_SYNC_MODE` 是否为 `none`
-- `JWT_SECRET` 是否至少 16 位
-- `STATIC_DOCS_DIR` 是否正确
-
-### npm 报 npm-cli.js 找不到
-
-说明系统 npm 入口损坏。先检查：
-
-```powershell
-where npm
-npm -v
-```
-
-正常应该指向 Node.js 安装目录，例如：
-
-```text
-E:\nodejs\npm.cmd
-```
-
-### PowerShell 中文乱码
-
-先执行：
-
-```powershell
-chcp 65001
-```
-
-再运行项目命令。
-
-## 13. 推荐开发顺序
-
-每次开发建议按这个顺序：
-
-1. 启动 MySQL
-2. 启动后端：`npm run dev:server`
-3. 浏览器测试：`http://localhost:3000/health`
-4. 浏览器测试：`http://localhost:3000/api/resources`
-5. 启动小程序：`npm run dev:mp-weixin`
-6. 微信开发者工具导入：`dist\dev\mp-weixin`
-7. 测试首页、资料页、PDF 预览和下载
-8. 再测试 AI 讲题等需要 `OPENAI_API_KEY` 的功能
-
-## 14. 后续开发建议
-
-优先级建议：
-
-1. 增加 PDF 年份详情页，支持真题、答案、AI 解析联动
-2. 从 PDF 或结构化文件生成题库
-3. 完善错题本、收藏夹、学习记录闭环
-4. 增加微信登录正式配置
-5. 后续上线时迁移到云服务器和对象存储
-
-## 15. 2025 真题导入
-
-2025 年题目和答案文件：
-
-```text
-E:\python chapter\408\docs\papers-rebuild\2025.pdf
-E:\python chapter\408\docs\answers\2025-answer.pdf
-```
-
-独立后台网页导入方式：
-
-1. 启动后端服务
-2. 启动独立后台：`npm run dev:admin-web`
-3. 打开 `http://127.0.0.1:5174`
-4. 点击 `一键导入 2025 真题`
-
-后台会自动完成：
-
-- 题目提取
-- few-shot 科目分类
-- few-shot 难度划分
-- 标准答案入库
-- 写入 `ai_408_study`
-
-也可以直接调用接口：
-
-```text
-POST /api/admin/questions/import-2025
-```
-
-后台网页还支持：
-
-- 手动新增、编辑、删除题目
-- 粘贴 few-shot 生成的 JSON 并入库
-- 上传 PDF 自动识别，生成 JSON 文本，同时写入 `ai_408_study`

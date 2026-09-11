@@ -10,6 +10,7 @@
     "db:init": "tsx src/scripts/init-database.ts",
     "db:reset": "tsx src/scripts/init-database.ts --reset",
     "resources:sync": "tsx src/scripts/sync-static-pdfs.ts",
+    "migrate:cloudbase": "tsx src/scripts/migrate-to-cloudbase.ts",
     "seed:questions": "tsx src/scripts/seed-questions.ts",
     "upload:papers": "tsx src/scripts/upload-papers.ts",
     "lint": "eslint \"src/**/*.ts\"",
